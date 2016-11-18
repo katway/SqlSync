@@ -40,7 +40,7 @@ namespace SqlSync
             this.stsTables.Text = string.Format(@"0/{0}", c.SyncTables.Count);
 
             SyncThread = new Thread(
-                             delegate()
+                             delegate ()
                              {
                                  while (true)
                                  {
@@ -74,7 +74,7 @@ namespace SqlSync
                 log.Info(string.Format("开始同步{0}到{1},方向:{2}.", tab.MasterTable, tab.SlaveTable, tab.Direction));
                 //更新状态栏
                 this.Invoke(new MethodInvoker(
-                        delegate()
+                        delegate ()
                         {
                             this.stsTables.Text = string.Format(@"{0}/{1}", config.SyncTables.IndexOf(tab) + 1, config.SyncTables.Count);
                             this.stslTable.Text = tab.ToString();
@@ -95,7 +95,7 @@ namespace SqlSync
                     {
                         log.Error(ex.Message);
                         this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 if (this.txtLog.Text.Length > 1024 * 1024 * 10)
                                     this.txtLog.Text = string.Empty;
@@ -117,7 +117,7 @@ namespace SqlSync
                 ///下面进行单向同步
                 if ((tab.Direction == SyncDirection.Push) || (tab.Direction == SyncDirection.Sync))
                 {
-                   
+
                     ds = new DataSet();
                     //读取源数据
                     myCommand = new SqlDataAdapter(tab.GetQueryString(tab.MasterTable), sqlConn);
@@ -126,7 +126,7 @@ namespace SqlSync
 
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 stpProgress.Maximum = dt.Rows.Count;
                                 stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
@@ -153,7 +153,7 @@ namespace SqlSync
 
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 stpProgress.Maximum = dt.Rows.Count;
                                 stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
@@ -194,7 +194,7 @@ namespace SqlSync
                 {
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 int index = dt.Rows.IndexOf(row) + 1;
                                 stslRows.Text = string.Format(@"{0}/{1}", index, dt.Rows.Count);
@@ -204,8 +204,14 @@ namespace SqlSync
                     if (destConn.State != ConnectionState.Open)
                         continue;
 
+                    StringBuilder updateSql = new StringBuilder();
+                    StringBuilder whereSql = new StringBuilder();
+
                     StringBuilder insertSql = new StringBuilder();
                     StringBuilder valueSql = new StringBuilder();
+
+                    updateSql.AppendFormat(@"UPDATE {0} SET ", dt.TableName);
+                    whereSql.Append(@" WHERE ");
 
                     insertSql.AppendFormat(@"insert into {0} (", dt.TableName);
                     valueSql.AppendFormat(@" values(");
@@ -214,34 +220,59 @@ namespace SqlSync
                         //如果是要被忽略的字段,则跳过本列
                         if (tab.IgnoreFields.Contains(col.ColumnName.ToLower()))
                             continue;
+                        updateSql.AppendFormat(@"{0}=", col.ColumnName);
 
                         insertSql.AppendFormat(@"{0},", col.ColumnName);
                         if (row[col.ColumnName] != System.DBNull.Value)
                         {
+                            if (col.ColumnName.ToLower() == tab.Key.ToLower())
+                                whereSql.AppendFormat("{0} = {1}", col.ColumnName,
+                                                                    string.Format(dataFormat[col.DataType], row[col.ColumnName].ToString()));
                             if (col.DataType != typeof(bool))
+                            {
+                                updateSql.AppendFormat(dataFormat[col.DataType], row[col.ColumnName].ToString()).Append(",");
                                 valueSql.AppendFormat(dataFormat[col.DataType], row[col.ColumnName].ToString()).Append(",");
+                            }
                             else
+                            {
+                                updateSql.AppendFormat((((bool)row[col.ColumnName] == true) ? 1 : 0).ToString()).Append(",");
                                 valueSql.AppendFormat((((bool)row[col.ColumnName] == true) ? 1 : 0).ToString()).Append(",");
+                            }
                         }
                         else
+                        {
+                            updateSql.AppendFormat("Null,");
                             valueSql.AppendFormat("Null,");
+                        }
                     }
                     //添加同步字段的数据,用于在目标表中标记该纪录无需反向同步
+                    updateSql.AppendFormat(@"{0}={1},", tab.SyncStateField, (int)SyncState.Sync);
                     insertSql.AppendFormat(@"{0},", tab.SyncStateField);
                     valueSql.AppendFormat(dataFormat[typeof(int)], (int)SyncState.Sync).Append(",");
+
+                    updateSql.AppendFormat(@"{0}=0,", tab.SyncErrorsField);
                     insertSql.AppendFormat(@"{0},", tab.SyncErrorsField);
                     valueSql.AppendFormat(dataFormat[typeof(int)], 0).Append(",");
 
+                    //拼接Update语句和where条件
+                    updateSql.Remove(updateSql.Length - 1, 1).Append(whereSql.ToString());
                     //拼接insert和values语句
                     insertSql.Remove(insertSql.Length - 1, 1).Append(")");
                     valueSql.Remove(valueSql.Length - 1, 1).Append(")");
                     insertSql.Append(valueSql);
 
                     dbCommand.Connection = destConn;
-                    dbCommand.CommandText = insertSql.ToString();
+
                     try
                     {
+                        dbCommand.CommandText = updateSql.ToString();
                         int r = dbCommand.ExecuteNonQuery();
+
+                        if (r <= 0)
+                        {
+                            dbCommand.CommandText = insertSql.ToString();
+                            r = r | dbCommand.ExecuteNonQuery();
+                        }
 
                         //如果执行成功
                         if (r > 0)
@@ -254,7 +285,7 @@ namespace SqlSync
                         string err = dbCommand.CommandText + "\r\n" + ex.Message + "\r\n\r\n";
                         log.Error(err);
                         this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             { this.txtLog.Text += (err); }
                             ));
 
