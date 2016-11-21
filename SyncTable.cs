@@ -14,7 +14,7 @@ namespace SqlSync
         /// <summary>
         /// 主键
         /// </summary>
-        public string Key { get; set; }
+        public List<string> Key { get; set; }
         /// <summary>
         ///同步状态字段名 
         /// </summary>
@@ -65,8 +65,9 @@ namespace SqlSync
 
         public SyncTable()
         {
+            this.Key = new List<string>();
             this.IgnoreFields = new List<string>();
-            this.Key = "sId";
+            this.Key.Add("sId");
             this.SyncStateField = "SyncState";
             this.SyncErrorsField = "SyncErrors";
             //this.IgnoreFields.Add(this.SyncStateField.ToLower());
@@ -77,7 +78,7 @@ namespace SqlSync
             : this()
         {
             this.MasterTable = tableName;
-            this.Key = key;
+            this.Key.Add(key);
             this.QueryString = queryString;
             this.SlaveTable = destinationTable;
             this.Direction = direction;

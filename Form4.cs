@@ -137,9 +137,9 @@ namespace SqlSync
                     var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
 
                     //更新源数据状态
-                    foreach (var key in resut.Keys)
-                        UpdateSyncState(sqlConn, tab, key, resut[key]);
-                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Count));
+                    foreach (var row in resut.Rows)
+                        UpdateSyncState(sqlConn, tab, row);
+                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows));
                 }
 
                 ///下面进行异向同步
@@ -164,8 +164,8 @@ namespace SqlSync
                     var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
 
                     //更新源数据状态
-                    foreach (var key in resut.Keys)
-                        UpdateSyncState(oraConn, tab, key, resut[key]);
+                    foreach (var row in resut.Rows)
+                        UpdateSyncState(oraConn, tab, row);
                     log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Count));
                 }
                 sqlConn.Close();
@@ -176,14 +176,19 @@ namespace SqlSync
 
         /// <summary>
         /// 将指定的数据表中的数据写入目标数据库
+        /// 不要嫌这个过程写得太长太复杂，都是因为功能是一步步增加的，有能力的重构吧
         /// </summary>
         /// <param name="destConn"></param>
         /// <param name="dt"></param>
         /// <param name="tab"></param>
         /// <returns></returns>
-        private Dictionary<string, SyncState> InsertData(DbConnection destConn, DatabaseType dbType, DataTable dt, SyncTable tab)
+        private DataTable InsertData(DbConnection destConn, DatabaseType dbType, DataTable dt, SyncTable tab)
         {
-            Dictionary<string, SyncState> result = new Dictionary<string, SyncState>();
+            //Dictionary<string, SyncState> result = new Dictionary<string, SyncState>();
+            DataTable res = new DataTable("result");
+            foreach (var k in tab.Key)
+                res.Columns.Add(k);
+            res.Columns.Add("SyncState");
 
             //预备数据转换到SQL的表示规则
             Dictionary<Type, string> dataFormat = DataSqlFormat(dbType);
@@ -225,7 +230,7 @@ namespace SqlSync
                         insertSql.AppendFormat(@"{0},", col.ColumnName);
                         if (row[col.ColumnName] != System.DBNull.Value)
                         {
-                            if (col.ColumnName.ToLower() == tab.Key.ToLower())
+                            if (tab.Key.Contains(col.ColumnName.ToLower()))
                                 whereSql.AppendFormat("{0} = {1}", col.ColumnName,
                                                                     string.Format(dataFormat[col.DataType], row[col.ColumnName].ToString()));
                             if (col.DataType != typeof(bool))
@@ -263,11 +268,14 @@ namespace SqlSync
 
                     dbCommand.Connection = destConn;
 
+
+                    DataRow newRow = res.NewRow();
+                    SyncState rowState = SyncState.UnSync;
                     try
                     {
                         dbCommand.CommandText = updateSql.ToString();
                         int r = dbCommand.ExecuteNonQuery();
-
+                        //如果更新条目为0，才执行插入操作
                         if (r <= 0)
                         {
                             dbCommand.CommandText = insertSql.ToString();
@@ -275,10 +283,7 @@ namespace SqlSync
                         }
 
                         //如果执行成功
-                        if (r > 0)
-                            result.Add(row[tab.Key].ToString(), SyncState.Sync);
-                        else
-                            result.Add(row[tab.Key].ToString(), SyncState.Error);
+                        rowState = (r > 0) ? SyncState.Sync : SyncState.Error;
                     }
                     catch (Exception ex)
                     {
@@ -286,14 +291,19 @@ namespace SqlSync
                         log.Error(err);
                         this.Invoke(new MethodInvoker(
                             delegate ()
-                            { this.txtLog.Text += (err); }
-                            ));
+                            { this.txtLog.Text += (err); }));
 
-                        result.Add(row[tab.Key].ToString(), SyncState.Error);
+                        rowState = SyncState.Error;
                     }
+
+                    foreach (var k in tab.Key)
+                        newRow[k] = row[k].ToString();
+                    newRow["SyncState"] = rowState;
+
+                    res.Rows.Add(newRow);
                 }
 
-            return result;
+            return res;
         }
 
 
@@ -400,14 +410,17 @@ namespace SqlSync
         /// <param name="table"></param>
         /// <param name="KeyFieldValue"></param>
         /// <param name="state"></param>
-        private void UpdateSyncState(SqlConnection conn, SyncTable table, string KeyFieldValue, SyncState state)
+        private void UpdateSyncState(SqlConnection conn, SyncTable table, DataRow row)
         {
             //如果执行成功
             string stateSql;
-            stateSql = string.Format(@"update {0} set {1} ={2} , {3}= {3}+3-{2} where {4}='{5}'",
+            stateSql = string.Format(@"update {0} set {1} ={2} , {3}= {3}+3-{2}",// where {4}='{5}'",
                                                 table.MasterTable,
-                                                table.SyncStateField, (int)state,
-                                                table.SyncErrorsField, table.Key, KeyFieldValue);
+                                                table.SyncStateField, row[table.SyncStateField],
+                                                table.SyncErrorsField);
+            stateSql += " Where 1=1";
+            foreach (var k in table.Key)
+                stateSql += " AND " + k + " = " + row[k];
 
             SqlCommand stateCommand = new SqlCommand();
             stateCommand.CommandText = stateSql;
