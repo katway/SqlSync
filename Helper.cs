@@ -29,7 +29,17 @@ namespace SqlSync
 
             sqlCommand.Connection = conn;
             return sqlCommand;
+        }
 
+        internal static DatabaseType GetDbType(DbConnection conn)
+        {
+            DatabaseType t = DatabaseType.Unkown;
+            if (conn.GetType() == typeof(SqlConnection))
+                t = DatabaseType.MsSql;
+
+            if (conn.GetType() == typeof(OracleConnection))
+                t = DatabaseType.Oracle;
+            return t;
         }
 
         /// <summary>
@@ -43,7 +53,6 @@ namespace SqlSync
             FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write);
             x.Serialize(fs, config);
             fs.Close();
-
         }
 
         /// <summary>
@@ -62,7 +71,6 @@ namespace SqlSync
         /// <returns></returns>
         internal static Config ReadConfig(string configFile)
         {
-
             XmlSerializer x = new XmlSerializer(typeof(Config));
             Stream fs = new FileStream(configFile, FileMode.OpenOrCreate, FileAccess.Read);
             Config c = (Config)x.Deserialize(fs);
@@ -133,8 +141,10 @@ namespace SqlSync
                                                 table.SyncStateField, row[table.SyncStateField],
                                                 table.SyncErrorsField);
             stateSql += " Where 1=1";
-            foreach (var k in table.Key)
-                stateSql += " AND " + k + " = '" + row[k] + "'";
+            foreach (string k in table.Key)
+                stateSql += string.Format(" AND {0} = {1} ",
+                                                k,
+                                                string.Format(DataSqlFormat(GetDbType(conn))[row[k].GetType()], row[k].ToString()));
 
             DbCommand stateCommand = Helper.GetDbCommand(conn);
             stateCommand.CommandText = stateSql;

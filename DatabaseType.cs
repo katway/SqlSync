@@ -2,8 +2,8 @@
 {
     public enum DatabaseType
     {
+        Unkown,
         MsSql,
         Oracle
-
     }
 }
