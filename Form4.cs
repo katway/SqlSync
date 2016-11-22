@@ -12,6 +12,7 @@ using System.Xml.Serialization;
 using System.IO;
 using System.Threading;
 using log4net;
+
 namespace SqlSync
 {
     public partial class Form4 : Form
@@ -32,15 +33,17 @@ namespace SqlSync
             //c.RemoteConnectionString = @"Data Source=orcl;Persist Security Info=True;User ID=zhify;Password=zhify;";
             ////c.SyncTables.Add(new SyncTable("Employee", "outid"));
             //c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
-
-            //SaveConfig(c);
-            c = ReadConfig();
+            //c.SyncTables[0].Key.Add("key1");
+            //c.SyncTables[0].Key.Add("key2");
+            //c.SyncTables[0].Key.Add("key3");
+            //Helper.SaveConfig(c);
+            c = Helper.ReadConfig();
 
             //更新状态栏
             this.stsTables.Text = string.Format(@"0/{0}", c.SyncTables.Count);
 
             SyncThread = new Thread(
-                             delegate ()
+                             delegate()
                              {
                                  while (true)
                                  {
@@ -74,7 +77,7 @@ namespace SqlSync
                 log.Info(string.Format("开始同步{0}到{1},方向:{2}.", tab.MasterTable, tab.SlaveTable, tab.Direction));
                 //更新状态栏
                 this.Invoke(new MethodInvoker(
-                        delegate ()
+                        delegate()
                         {
                             this.stsTables.Text = string.Format(@"{0}/{1}", config.SyncTables.IndexOf(tab) + 1, config.SyncTables.Count);
                             this.stslTable.Text = tab.ToString();
@@ -88,14 +91,14 @@ namespace SqlSync
                 {
                     try
                     {
-                        AppendSyncFields(sqlConn, tab);
-                        AppendSyncFields(oraConn, tab);
+                        Helper.AppendSyncFields(sqlConn, tab);
+                        Helper.AppendSyncFields(oraConn, tab);
                     }
                     catch (Exception ex)
                     {
                         log.Error(ex.Message);
                         this.Invoke(new MethodInvoker(
-                            delegate ()
+                            delegate()
                             {
                                 if (this.txtLog.Text.Length > 1024 * 1024 * 10)
                                     this.txtLog.Text = string.Empty;
@@ -126,7 +129,7 @@ namespace SqlSync
 
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate ()
+                            delegate()
                             {
                                 stpProgress.Maximum = dt.Rows.Count;
                                 stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
@@ -137,8 +140,8 @@ namespace SqlSync
                     var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
 
                     //更新源数据状态
-                    foreach (var row in resut.Rows)
-                        UpdateSyncState(sqlConn, tab, row);
+                    foreach (DataRow row in resut.Rows)
+                        Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
                     log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows));
                 }
 
@@ -153,7 +156,7 @@ namespace SqlSync
 
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate ()
+                            delegate()
                             {
                                 stpProgress.Maximum = dt.Rows.Count;
                                 stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
@@ -164,9 +167,9 @@ namespace SqlSync
                     var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
 
                     //更新源数据状态
-                    foreach (var row in resut.Rows)
-                        UpdateSyncState(oraConn, tab, row);
-                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Count));
+                    foreach (DataRow row in resut.Rows)
+                        Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
+                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows));
                 }
                 sqlConn.Close();
                 oraConn.Close();
@@ -191,15 +194,15 @@ namespace SqlSync
             res.Columns.Add("SyncState");
 
             //预备数据转换到SQL的表示规则
-            Dictionary<Type, string> dataFormat = DataSqlFormat(dbType);
-            DbCommand dbCommand = GetDbCommand(destConn);
+            Dictionary<Type, string> dataFormat = Helper.DataSqlFormat(dbType);
+            DbCommand dbCommand = Helper.GetDbCommand(destConn);
 
             if (dbCommand != null)
                 foreach (DataRow row in dt.Rows)
                 {
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate ()
+                            delegate()
                             {
                                 int index = dt.Rows.IndexOf(row) + 1;
                                 stslRows.Text = string.Format(@"{0}/{1}", index, dt.Rows.Count);
@@ -216,7 +219,7 @@ namespace SqlSync
                     StringBuilder valueSql = new StringBuilder();
 
                     updateSql.AppendFormat(@"UPDATE {0} SET ", dt.TableName);
-                    whereSql.Append(@" WHERE ");
+                    whereSql.Append(@" WHERE 1=1");
 
                     insertSql.AppendFormat(@"insert into {0} (", dt.TableName);
                     valueSql.AppendFormat(@" values(");
@@ -231,7 +234,7 @@ namespace SqlSync
                         if (row[col.ColumnName] != System.DBNull.Value)
                         {
                             if (tab.Key.Contains(col.ColumnName.ToLower()))
-                                whereSql.AppendFormat("{0} = {1}", col.ColumnName,
+                                whereSql.AppendFormat(" AND {0} = {1}", col.ColumnName,
                                                                     string.Format(dataFormat[col.DataType], row[col.ColumnName].ToString()));
                             if (col.DataType != typeof(bool))
                             {
@@ -290,7 +293,7 @@ namespace SqlSync
                         string err = dbCommand.CommandText + "\r\n" + ex.Message + "\r\n\r\n";
                         log.Error(err);
                         this.Invoke(new MethodInvoker(
-                            delegate ()
+                            delegate()
                             { this.txtLog.Text += (err); }));
 
                         rowState = SyncState.Error;
@@ -298,195 +301,11 @@ namespace SqlSync
 
                     foreach (var k in tab.Key)
                         newRow[k] = row[k].ToString();
-                    newRow["SyncState"] = rowState;
+                    newRow["SyncState"] = (int)rowState;
 
                     res.Rows.Add(newRow);
                 }
-
             return res;
-        }
-
-
-        /// <summary>
-        /// 预备C#数据类型到SQL语句数据表示方式的转换规则
-        /// </summary>
-        /// <param name="dataFormat">已初始化的字典集</param>
-        private Dictionary<Type, string> DataSqlFormat(DatabaseType dbType)
-        {
-            Dictionary<Type, string> dataFormat = new Dictionary<Type, string>();
-            dataFormat.Add(typeof(bool), @"{0}");
-            dataFormat.Add(typeof(sbyte), @"{0}");
-            dataFormat.Add(typeof(byte), @"{0}");
-            dataFormat.Add(typeof(short), @"{0}");
-            dataFormat.Add(typeof(ushort), @"{0}");
-            dataFormat.Add(typeof(int), @"{0}");
-            dataFormat.Add(typeof(uint), @"{0}");
-            dataFormat.Add(typeof(long), @"{0}");
-            dataFormat.Add(typeof(ulong), @"{0}");
-            dataFormat.Add(typeof(char), @"'{0}'");
-            if (dbType == DatabaseType.Oracle)
-                dataFormat.Add(typeof(DateTime), @"to_date('{0}','yyyy-mm-dd hh24:mi:ss')");
-            if (dbType == DatabaseType.MsSql)
-                dataFormat.Add(typeof(DateTime), @"'{0}'");
-
-            dataFormat.Add(typeof(string), @"'{0}'");
-
-            dataFormat.Add(typeof(float), @"{0}");
-            dataFormat.Add(typeof(double), @"{0}");
-            dataFormat.Add(typeof(decimal), @"{0}");
-
-            return dataFormat;
-        }
-        /// <summary>
-        /// 取得到指定数据库连接的DbCommand对象
-        /// </summary>
-        /// <param name="conn"></param>
-        /// <returns></returns>
-        private DbCommand GetDbCommand(DbConnection conn)
-        {
-            DbCommand sqlCommand = null;
-            if (conn.GetType() == typeof(SqlConnection))
-                sqlCommand = new SqlCommand();
-
-            if (conn.GetType() == typeof(OracleConnection))
-                sqlCommand = new OracleCommand();
-
-            sqlCommand.Connection = conn;
-            return sqlCommand;
-
-        }
-
-        /// <summary>
-        /// 在数据库中建立同步所需的状态字段，并将初始值设置为0。
-        /// </summary>
-        /// <param name="conn"></param>
-        /// <param name="table"></param>
-        private void AppendSyncFields(SqlConnection conn, SyncTable table)
-        {
-            string fieldSql = string.Format(@"if not exists(select * from syscolumns where id=object_id('{0}') and name='{1}') 
-                                                        begin alter table {0} add {1} int default 0 not null;end 
-                                              if not exists(select * from syscolumns where id=object_id('{0}') and name='{2}') 
-                                                        begin alter table {0} add {2} int default 0 not null;end",
-                                                     table.MasterTable,
-                                                     table.SyncStateField,
-                                                     table.SyncErrorsField
-                                                     );
-            SqlCommand sqlcmd = new SqlCommand(fieldSql, conn);
-            sqlcmd.ExecuteNonQuery();
-        }
-        /// <summary>
-        /// 在数据库中建立同步所需的状态字段，并将初始值设置为0。
-        /// </summary>
-        /// <param name="conn"></param>
-        /// <param name="table"></param>
-        /// <exception cref=""
-        private void AppendSyncFields(OracleConnection conn, SyncTable table)
-        {
-            string fieldSql = string.Format(@"declare v_count integer;
-                                                begin
-                                                    select count(1) into v_count from  user_tab_columns where  Table_name='{0}' and Column_name='{1}' ;
-                                                    if v_count =0 then
-                                                       execute immediate 'alter table {0} add {1} int default 0 not null';                                                       
-                                                       commit;                                                       
-                                                    end if;
-                                                    select count(1) into v_count from  user_tab_columns where  Table_name='{0}' and Column_name='{2}' ;
-                                                    if v_count =0 then
-                                                        execute immediate 'alter table {0} add {2} int default 0 not null';
-                                                        commit;                                                       
-                                                    end if;
-                                                end;",
-                                                     table.SlaveTable.ToUpper(),
-                                                     table.SyncStateField.ToUpper(),
-                                                     table.SyncErrorsField.ToUpper()
-                                                     );
-            OracleCommand oracmd = new OracleCommand(fieldSql, conn);
-            oracmd.ExecuteNonQuery();
-        }
-
-        /// <summary>
-        /// 向数据源表中写入更新成功或失败的状态
-        /// </summary>
-        /// <param name="conn"></param>
-        /// <param name="table"></param>
-        /// <param name="KeyFieldValue"></param>
-        /// <param name="state"></param>
-        private void UpdateSyncState(SqlConnection conn, SyncTable table, DataRow row)
-        {
-            //如果执行成功
-            string stateSql;
-            stateSql = string.Format(@"update {0} set {1} ={2} , {3}= {3}+3-{2}",// where {4}='{5}'",
-                                                table.MasterTable,
-                                                table.SyncStateField, row[table.SyncStateField],
-                                                table.SyncErrorsField);
-            stateSql += " Where 1=1";
-            foreach (var k in table.Key)
-                stateSql += " AND " + k + " = " + row[k];
-
-            SqlCommand stateCommand = new SqlCommand();
-            stateCommand.CommandText = stateSql;
-            stateCommand.Connection = conn;
-            stateCommand.ExecuteNonQuery();
-        }
-
-        /// <summary>
-        /// 向数据源表中写入更新成功或失败的状态
-        /// </summary>
-        /// <param name="conn"></param>
-        /// <param name="table"></param>
-        /// <param name="KeyFieldValue"></param>
-        /// <param name="state"></param>
-        private void UpdateSyncState(OracleConnection conn, SyncTable table, string KeyFieldValue, SyncState state)
-        {
-            //如果执行成功
-            string stateSql;
-            stateSql = string.Format(@"update {0} set {1} ={2} , {3}= {3}+3-{2} where {4}='{5}'",
-                                                table.SlaveTable,
-                                                table.SyncStateField, (int)state,
-                                                table.SyncErrorsField, table.Key, KeyFieldValue);
-
-            OracleCommand stateCommand = new OracleCommand();
-            stateCommand.CommandText = stateSql;
-            stateCommand.Connection = conn;
-            try
-            { stateCommand.ExecuteNonQuery(); }
-            catch
-            { }
-        }
-
-        /// <summary>
-        /// 将配置写入文件
-        /// </summary>
-        /// <param name="config"></param>
-        private void SaveConfig(Config config)
-        {
-            string file = AppDomain.CurrentDomain.BaseDirectory + "config.xml";
-            XmlSerializer x = new XmlSerializer(typeof(Config));
-            FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write);
-            x.Serialize(fs, config);
-            fs.Close();
-
-        }
-        /// <summary>
-        /// 从缺省的配置文件中读取配置
-        /// </summary>
-        /// <returns></returns>
-        private Config ReadConfig()
-        {
-            return ReadConfig(AppDomain.CurrentDomain.BaseDirectory + "config.xml");
-        }
-        /// <summary>
-        /// 从指定文件中读取配置
-        /// </summary>
-        /// <param name="configFile">指定的xml文件,应指定包含完整路径的文件名</param>
-        /// <returns></returns>
-        private Config ReadConfig(string configFile)
-        {
-
-            XmlSerializer x = new XmlSerializer(typeof(Config));
-            Stream fs = new FileStream(configFile, FileMode.OpenOrCreate, FileAccess.Read);
-            Config c = (Config)x.Deserialize(fs);
-            fs.Close();
-            return c;
         }
 
         private void Form4_FormClosing(object sender, FormClosingEventArgs e)
@@ -495,6 +314,5 @@ namespace SqlSync
                 SyncThread.Abort();
             Environment.Exit(Environment.ExitCode);
         }
-
     }
 }

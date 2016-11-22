@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Serialization;
 
 namespace SqlSync
 {
@@ -11,13 +12,29 @@ namespace SqlSync
         /// 数据表名
         /// </summary>
         public string MasterTable { get; set; }
+
         /// <summary>
         /// 主键
         /// </summary>
-        public List<string> Key { get; set; }
+        [XmlIgnore]
+        public List<string> Key { get; private set; }
+
+        [XmlElement("Key")]
+        public string Keys
+        {
+            get { return string.Join(",", Key.ToArray()); }
+            set
+            {
+                string[] es = value.Split(',');
+                foreach (string e in es)
+                    Key.Add(e.ToLower());
+            }
+        }
+
         /// <summary>
         ///同步状态字段名 
         /// </summary>
+        /// 
         public string SyncStateField
         {
             get { return syncStateField; }
@@ -67,7 +84,7 @@ namespace SqlSync
         {
             this.Key = new List<string>();
             this.IgnoreFields = new List<string>();
-            this.Key.Add("sId");
+            //this.Key.Add("sId");
             this.SyncStateField = "SyncState";
             this.SyncErrorsField = "SyncErrors";
             //this.IgnoreFields.Add(this.SyncStateField.ToLower());
