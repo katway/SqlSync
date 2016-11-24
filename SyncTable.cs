@@ -18,7 +18,6 @@ namespace SqlSync
         /// </summary>
         [XmlIgnore]
         public List<string> Key { get; private set; }
-
         [XmlElement("Key")]
         public string Keys
         {
@@ -45,6 +44,7 @@ namespace SqlSync
             }
         }
         private string syncStateField;
+
         /// <summary>
         /// 同步错误计数字段名
         /// </summary>
@@ -58,27 +58,35 @@ namespace SqlSync
             }
         }
         private string syncErrorField;
+
         /// <summary>
         /// 数据表的查询语句
         /// </summary>
         private string QueryString { get; set; }
+
         /// <summary>
         /// 查询语句的格式化形式
         /// </summary>
         public string QueryStringFormat { get; set; }
+
         /// <summary>
         /// 同步时被忽略的字段
         /// </summary>
         public List<string> IgnoreFields { get; set; }
+
         /// <summary>
         /// 目标表
         /// </summary>
         public string SlaveTable { get; set; }
+
         /// <summary>
         /// 同步方向
         /// </summary>
         public SyncDirection Direction { get; set; }
-
+        /// <summary>
+        /// 同步优先级
+        /// </summary>
+        public SyncPriority Priority { get; set; }
 
         public SyncTable()
         {
@@ -155,7 +163,9 @@ namespace SqlSync
         public override string ToString()
         {
             string[] symbol = { ">", "<", "<>" };
+            
             return string.Format("{0}{1}{2}", this.MasterTable, symbol[(int)this.Direction], this.SlaveTable);
         }
+       
     }
 }
