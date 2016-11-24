@@ -12,12 +12,13 @@ using System.Xml.Serialization;
 using System.IO;
 using System.Threading;
 using log4net;
+using System.Linq;
 
 namespace SqlSync
 {
     public partial class Form4 : Form
     {
-        Thread SyncThread;
+        List<Thread> SyncThreads = new List<Thread>();
         log4net.ILog log;
         public Form4()
         {
@@ -42,27 +43,38 @@ namespace SqlSync
             //更新状态栏
             this.stsTables.Text = string.Format(@"0/{0}", c.SyncTables.Count);
 
-            SyncThread = new Thread(
-                             delegate()
-                             {
-                                 while (true)
-                                 {
-                                     log.Info("开始首次同步");
-                                     try
-                                     { TransferData(c); }
-                                     catch (Exception ex)
-                                     {
-                                         log.Error(ex);
-                                     }
-                                     Thread.Sleep(1000 * 6);
-                                 }
-                             });
-            SyncThread.Start();
+            ///取得所有优先级的列表
+            var priorityList = c.SyncTables.GroupBy(t => t.Priority).ToList();
+
+            foreach (var pr in priorityList)
+            {
+                ///该优先级下的所有需同步表
+                List<SyncTable> ts = (from table in c.SyncTables
+                                      where table.Priority == pr.Key
+                                      select table).ToList();
+
+                Thread th = new Thread(delegate ()
+                {
+                    while (true)
+                    {
+                        log.Info(string.Format("{0}优先级线程开始执行同步", pr.Key));
+                        try
+                        { TransferData(c, ts); }
+                        catch (Exception ex)
+                        {
+                            log.Error(ex);
+                        }
+                        Thread.Sleep(pr.Key.DelayTime());
+                    }
+                });
+                th.Start();
+                SyncThreads.Add(th);
+            }
             this.btnCopy.Enabled = false;
         }
 
 
-        public void TransferData(Config config)
+        public void TransferData(Config config, List<SyncTable> tables)
         {
             DataSet ds;
 
@@ -72,14 +84,14 @@ namespace SqlSync
 
             StringBuilder selectSql = new StringBuilder();
             DbDataAdapter myCommand = null;
-            foreach (var tab in config.SyncTables)
+            foreach (var tab in tables)
             {
                 log.Info(string.Format("开始同步{0}到{1},方向:{2}.", tab.MasterTable, tab.SlaveTable, tab.Direction));
                 //更新状态栏
                 this.Invoke(new MethodInvoker(
-                        delegate()
+                        delegate ()
                         {
-                            this.stsTables.Text = string.Format(@"{0}/{1}", config.SyncTables.IndexOf(tab) + 1, config.SyncTables.Count);
+                            this.stsTables.Text = string.Format(@"{0}/{1}", tables.IndexOf(tab) + 1, tables.Count);
                             this.stslTable.Text = tab.ToString();
                         }));
 
@@ -98,7 +110,7 @@ namespace SqlSync
                     {
                         log.Error(ex.Message);
                         this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 if (this.txtLog.Text.Length > 1024 * 1024 * 10)
                                     this.txtLog.Text = string.Empty;
@@ -129,7 +141,7 @@ namespace SqlSync
 
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 stpProgress.Maximum = dt.Rows.Count;
                                 stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
@@ -142,7 +154,7 @@ namespace SqlSync
                     //更新源数据状态
                     foreach (DataRow row in resut.Rows)
                         Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
-                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows));
+                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows.Count));
                 }
 
                 ///下面进行异向同步
@@ -156,7 +168,7 @@ namespace SqlSync
 
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 stpProgress.Maximum = dt.Rows.Count;
                                 stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
@@ -169,7 +181,7 @@ namespace SqlSync
                     //更新源数据状态
                     foreach (DataRow row in resut.Rows)
                         Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
-                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows));
+                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
                 }
                 sqlConn.Close();
                 oraConn.Close();
@@ -202,7 +214,7 @@ namespace SqlSync
                 {
                     //更新状态栏
                     this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             {
                                 int index = dt.Rows.IndexOf(row) + 1;
                                 stslRows.Text = string.Format(@"{0}/{1}", index, dt.Rows.Count);
@@ -293,7 +305,7 @@ namespace SqlSync
                         string err = dbCommand.CommandText + "\r\n" + ex.Message + "\r\n\r\n";
                         log.Error(err);
                         this.Invoke(new MethodInvoker(
-                            delegate()
+                            delegate ()
                             { this.txtLog.Text += (err); }));
 
                         rowState = SyncState.Error;
@@ -310,8 +322,9 @@ namespace SqlSync
 
         private void Form4_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (SyncThread != null)
-                SyncThread.Abort();
+            foreach (var th in SyncThreads)
+                if (th != null)
+                    th.Abort();
             Environment.Exit(Environment.ExitCode);
         }
     }

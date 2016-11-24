@@ -86,7 +86,7 @@ namespace SqlSync
         /// <summary>
         /// 同步优先级
         /// </summary>
-        public SyncPriority Priority { get; set; }
+        public SyncPriority Priority { get; set; } = SyncPriority.Normal;
 
         public SyncTable()
         {

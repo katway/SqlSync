@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>SqlSync</RootNamespace>
     <AssemblyName>SqlSync</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
@@ -67,6 +67,7 @@
   <ItemGroup>
     <Compile Include="Config.cs" />
     <Compile Include="DatabaseType.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="Form4.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -107,6 +108,7 @@
     </Compile>
     <Compile Include="SyncDatabase.cs" />
     <Compile Include="SyncDirection.cs" />
+    <Compile Include="SyncPriority.cs" />
     <Compile Include="SyncState.cs" />
     <Compile Include="SyncTable.cs" />
   </ItemGroup>
