@@ -19,7 +19,8 @@ namespace SqlSync
     public partial class Form4 : Form
     {
         List<Thread> SyncThreads = new List<Thread>();
-        log4net.ILog log;
+        log4net.ILog log;       
+
         public Form4()
         {
             InitializeComponent();
@@ -67,10 +68,18 @@ namespace SqlSync
                         Thread.Sleep(pr.Key.DelayTime());
                     }
                 });
+
                 th.Start();
                 SyncThreads.Add(th);
             }
-            this.btnCopy.Enabled = false;
+            //this.btnStart.Enabled = false;
+            //this.btnStart.Visible = false;
+            ((Control)sender).Enabled = false;
+            ((Control)sender).Visible = false;
+            this.btnPause.Enabled = true;
+            this.btnPause.Visible = true;
+
+            this.btnStop.Enabled = true;
         }
 
 
@@ -114,9 +123,9 @@ namespace SqlSync
                             {
                                 if (this.txtLog.Text.Length > 1024 * 1024 * 10)
                                     this.txtLog.Text = string.Empty;
-                                this.txtLog.Text += string.Format("向表{0}中添加同步字段失败，请手动添加。\r\n"
-                                                                    + "alter table {0}|{1} add {2} int default 0 not null;\r\n"
-                                                                    + "alter table {0}|{1} add {3} int default 0 not null;\r\n"
+                                this.txtLog.Text += string.Format("向表{0}/{1}中添加同步字段失败，请手动添加。\r\n"
+                                                                    + "alter table {0}/{1} add {2} int default 0 not null;\r\n"
+                                                                    + "alter table {0}/{1} add {3} int default 0 not null;\r\n"
                                                                     + "{4}\r\n\r\n",
                                                                     tab.MasterTable.ToUpper(),
                                                                     tab.SlaveTable.ToUpper(),
@@ -190,12 +199,12 @@ namespace SqlSync
 
 
         /// <summary>
-        /// 将指定的数据表中的数据写入目标数据库
-        /// 不要嫌这个过程写得太长太复杂，都是因为功能是一步步增加的，有能力的重构吧
+        /// 将DataTable中的数据写入到目标数据库
+        /// 不要嫌这个过程写得太长太复杂，功能是一步步增加的，有时间的重构吧
         /// </summary>
-        /// <param name="destConn"></param>
-        /// <param name="dt"></param>
-        /// <param name="tab"></param>
+        /// <param name="destConn">目标数据库</param>
+        /// <param name="dt">包含数据的源表</param>
+        /// <param name="tab">同步表信息</param>
         /// <returns></returns>
         private DataTable InsertData(DbConnection destConn, DatabaseType dbType, DataTable dt, SyncTable tab)
         {
@@ -217,8 +226,8 @@ namespace SqlSync
                             delegate ()
                             {
                                 int index = dt.Rows.IndexOf(row) + 1;
-                                stslRows.Text = string.Format(@"{0}/{1}", index, dt.Rows.Count);
-                                stpProgress.Value = index;
+                                this.stslRows.Text = string.Format(@"{0}/{1}", index, dt.Rows.Count);
+                                this.stpProgress.Value = index;
                             }));
                     //如果连接故障,跳过其余条目
                     if (destConn.State != ConnectionState.Open)
@@ -326,6 +335,43 @@ namespace SqlSync
                 if (th != null)
                     th.Abort();
             Environment.Exit(Environment.ExitCode);
+        }
+
+        private void btnPause_Click(object sender, EventArgs e)
+        {
+            //string[] text = { "暂停", "继续" };
+            //((Control)sender).Tag = ((((Control)sender).Tag as int) + 1) / 2;
+            //((Control)sender).Text =
+            string tmp = ((Control)sender).Text;
+            ((Control)sender).Text = ((Control)sender).Tag as string;
+            ((Control)sender).Tag = tmp;
+
+            if (tmp == "暂停")
+            {
+                foreach (var th in SyncThreads)
+                    if (th != null)
+                        th.Suspend();
+                this.btnStop.Enabled = false;
+            }
+            if (tmp == "继续")
+            {
+                foreach (var th in SyncThreads)
+                    if (th != null)
+                        th.Resume();
+                this.btnStop.Enabled = true;
+            }
+        }
+
+        private void btnStop_Click(object sender, EventArgs e)
+        {
+            ((Control)sender).Enabled = false;
+            this.btnPause.Visible = false;
+            this.btnStart.Enabled = true;
+            this.btnStart.Visible = true;
+
+            foreach (var th in SyncThreads)
+                if (th != null)
+                    th.Abort();
         }
     }
 }
