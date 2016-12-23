@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Xml.Serialization;
 
 namespace SqlSync
@@ -88,6 +87,21 @@ namespace SqlSync
         /// </summary>
         public SyncPriority Priority { get; set; } = SyncPriority.Normal;
 
+        /// <summary>
+        /// 是否向源表中写入同步状态
+        /// </summary>
+        public bool UpdateSyncState { get; set; }
+
+
+
+
+        [XmlIgnore]
+        public SyncLog SyncLogsMaster { get; set; } = new SyncLog();
+        [XmlIgnore]
+        public SyncLog SyncLogsSlave { get; set; } = new SyncLog();
+
+
+
         public SyncTable()
         {
             this.Key = new List<string>();
@@ -159,13 +173,11 @@ namespace SqlSync
             return string.Format(QueryStringFormat, tableName);
         }
 
-
         public override string ToString()
         {
-            string[] symbol = { ">", "<", "<>" };
-            
+            string[] symbol = { "=", ">", "<", "<>" };
             return string.Format("{0}{1}{2}", this.MasterTable, symbol[(int)this.Direction], this.SlaveTable);
         }
-       
+
     }
 }

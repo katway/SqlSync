@@ -1,25 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 using System.Data.SqlClient;
 using System.Data.OracleClient;
-using System.Xml.Serialization;
-using System.IO;
 using System.Threading;
 using log4net;
 using System.Linq;
+using SqlSync.Extensions;
 
 namespace SqlSync
 {
     public partial class Form4 : Form
     {
         List<Thread> SyncThreads = new List<Thread>();
-        log4net.ILog log;       
+        log4net.ILog log;
 
         public Form4()
         {
@@ -31,15 +28,19 @@ namespace SqlSync
         private void btnCopy_Click(object sender, EventArgs e)
         {
             Config c = new Config();
-            //c.LocalConnectionString = @"server=localhost;uid=sa;pwd='123456';database='ZhiFY'";
-            //c.RemoteConnectionString = @"Data Source=orcl;Persist Security Info=True;User ID=zhify;Password=zhify;";
-            ////c.SyncTables.Add(new SyncTable("Employee", "outid"));
-            //c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
-            //c.SyncTables[0].Key.Add("key1");
-            //c.SyncTables[0].Key.Add("key2");
-            //c.SyncTables[0].Key.Add("key3");
-            //Helper.SaveConfig(c);
+            c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
+            c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.114)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=ZHIFY;Password=ZHIFY;";
+            //c.SyncTables.Add(new SyncTable("Employee", "outid"));
+            c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
+            c.SyncTables[0].Key.Add("key1");
+            c.SyncTables[0].Key.Add("key2");
+            c.SyncTables[0].Key.Add("key3");
+            Helper.SaveConfig(c);
             c = Helper.ReadConfig();
+
+            //c = c.SyncInfo.Enable ? ConfigLinkSyncLog(c) : c;
+            if (c.SyncInfo.AutoCreate)
+                Helper.CreateSyncInfoTable();
 
             //更新状态栏
             this.stsTables.Text = string.Format(@"0/{0}", c.SyncTables.Count);
@@ -83,18 +84,44 @@ namespace SqlSync
         }
 
 
+        public Config ConfigLinkSyncLog(Config config)
+        {
+            if (!config.SyncInfo.Enable) return config;
+
+            DbConnection masterConn = Helper.GetDbConnection(DatabaseType.MsSql);
+            DbConnection slaveConn = Helper.GetDbConnection(DatabaseType.Oracle);
+            masterConn.ConnectionString = config.LocalConnectionString;
+            slaveConn.ConnectionString = config.RemoteConnectionString;
+
+            masterConn.Open();
+            slaveConn.Open();
+            DataSet ds = null;
+            Helper.GetDbDataAdapter(string.Format("select * from {0}", config.SyncInfo.TableName)
+                                        , masterConn)
+                                   .Fill(ds);
+            config.SyncInfo.SyncLogsMaster = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+
+            Helper.GetDbDataAdapter(string.Format("select * from {0}", config.SyncInfo.TableName)
+                                        , slaveConn)
+                                  .Fill(ds);
+            config.SyncInfo.SyncLogsMaster = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+
+
+
+            if (masterConn.State == ConnectionState.Open) masterConn.Close();
+            if (masterConn.State == ConnectionState.Open) slaveConn.Close();
+            return null;
+        }
+
         public void TransferData(Config config, List<SyncTable> tables)
         {
-            DataSet ds;
-
             //建立到源数据的连接
             SqlConnection sqlConn = new SqlConnection(config.LocalConnectionString);
             OracleConnection oraConn = new OracleConnection(config.RemoteConnectionString);
 
-            StringBuilder selectSql = new StringBuilder();
-            DbDataAdapter myCommand = null;
             foreach (var tab in tables)
             {
+
                 log.Info(string.Format("开始同步{0}到{1},方向:{2}.", tab.MasterTable, tab.SlaveTable, tab.Direction));
                 //更新状态栏
                 this.Invoke(new MethodInvoker(
@@ -138,64 +165,68 @@ namespace SqlSync
                 }
                 #endregion
 
+
                 ///下面进行单向同步
                 if ((tab.Direction == SyncDirection.Push) || (tab.Direction == SyncDirection.Sync))
                 {
+                    if (GetDirectionBySyncLog(config, tab, sqlConn, oraConn) == SyncDirection.Push)
+                    {
+                        PushData(tab, sqlConn, oraConn);
+                        Helper.UpdateSyncInfo(tab.SyncLogsMaster, oraConn);
 
-                    ds = new DataSet();
-                    //读取源数据
-                    myCommand = new SqlDataAdapter(tab.GetQueryString(tab.MasterTable), sqlConn);
-                    myCommand.Fill(ds, tab.MasterTable);
-                    DataTable dt = ds.Tables[tab.MasterTable];
-
-                    //更新状态栏
-                    this.Invoke(new MethodInvoker(
-                            delegate ()
-                            {
-                                stpProgress.Maximum = dt.Rows.Count;
-                                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
-                            }));
-
-                    //写入目标库
-                    dt.TableName = tab.SlaveTable;
-                    var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
-
-                    //更新源数据状态
-                    foreach (DataRow row in resut.Rows)
-                        Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
-                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows.Count));
+                    }
                 }
 
                 ///下面进行异向同步
                 if ((tab.Direction == SyncDirection.Pull) || tab.Direction == SyncDirection.Sync)
                 {
-                    ds = new DataSet();
-                    //读取源数据
-                    myCommand = new OracleDataAdapter(tab.GetQueryString(tab.SlaveTable), oraConn);
-                    myCommand.Fill(ds, tab.SlaveTable);
-                    DataTable dt = ds.Tables[tab.SlaveTable];
-
-                    //更新状态栏
-                    this.Invoke(new MethodInvoker(
-                            delegate ()
-                            {
-                                stpProgress.Maximum = dt.Rows.Count;
-                                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
-                            }));
-
-                    //写入目标库
-                    dt.TableName = tab.MasterTable;
-                    var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
-
-                    //更新源数据状态
-                    foreach (DataRow row in resut.Rows)
-                        Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
-                    log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
+                    if (GetDirectionBySyncLog(config, tab, sqlConn, oraConn) == SyncDirection.Pull)
+                    {
+                        PullData(tab, sqlConn, oraConn);
+                        Helper.UpdateSyncInfo(tab.SyncLogsSlave, sqlConn);
+                    }
                 }
                 sqlConn.Close();
                 oraConn.Close();
             }
         }
+
+        private SyncDirection GetDirectionBySyncLog(Config config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
+        {
+            SyncDirection direct = SyncDirection.None;
+
+            StringBuilder selectSql = new StringBuilder();
+            DataSet ds = new DataSet();
+            IList<SyncLog> logs;
+            SyncLog masterLog = null;
+            SyncLog slaveLog = null;
+
+            Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.MasterTable)
+                                        , sqlConn)
+                                   .Fill(ds);
+            logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+            if (logs.Count > 0)
+                masterLog = logs[0];
+
+            ds.Clear();
+            Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.SlaveTable)
+                                        , oraConn)
+                                   .Fill(ds);
+            logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+            if (logs.Count > 0)
+                slaveLog = logs[0];
+
+
+            if (masterLog.ModifyTime > slaveLog.ModifyTime)
+                direct = SyncDirection.Push;
+            else if (masterLog.ModifyTime < slaveLog.ModifyTime)
+                direct = SyncDirection.Pull;
+            else
+                direct = SyncDirection.None;
+
+            return direct;
+        }
+
 
 
         /// <summary>
@@ -372,6 +403,65 @@ namespace SqlSync
             foreach (var th in SyncThreads)
                 if (th != null)
                     th.Abort();
+        }
+
+
+
+
+        public void PushData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
+        {
+            DataSet ds = new DataSet();
+
+            //读取源数据
+            DbDataAdapter sourceAdp = new SqlDataAdapter(tab.GetQueryString(tab.MasterTable), sqlConn);
+            sourceAdp.Fill(ds, tab.MasterTable);
+            DataTable dt = ds.Tables[tab.MasterTable];
+
+            //更新状态栏
+            this.Invoke(new MethodInvoker(delegate ()
+            {
+                stpProgress.Maximum = dt.Rows.Count;
+                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
+            }));
+
+            //写入目标库
+            dt.TableName = tab.SlaveTable;
+            var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
+
+            //更新源数据状态
+            if (tab.UpdateSyncState)
+                foreach (DataRow row in resut.Rows)
+                    Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
+            log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows.Count));
+
+        }
+
+
+        public void PullData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
+        {
+
+            DataSet ds = new DataSet();
+            //读取源数据
+            DbDataAdapter sourceAdp = new OracleDataAdapter(tab.GetQueryString(tab.SlaveTable), oraConn);
+            sourceAdp.Fill(ds, tab.SlaveTable);
+            DataTable dt = ds.Tables[tab.SlaveTable];
+
+            //更新状态栏
+            this.Invoke(new MethodInvoker(delegate ()
+                            {
+                                stpProgress.Maximum = dt.Rows.Count;
+                                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
+                            }));
+
+            //写入目标库
+            dt.TableName = tab.MasterTable;
+            var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
+
+            //更新源数据状态
+            if (tab.UpdateSyncState)
+                foreach (DataRow row in resut.Rows)
+                    Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
+            log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
         }
     }
 }

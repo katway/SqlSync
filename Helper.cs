@@ -13,6 +13,45 @@ namespace SqlSync
 {
     internal class Helper
     {
+
+        /// <summary>
+        /// 根据数据库类型取得一个到数据库的连接对象
+        /// </summary>
+        /// <param name="dbType"><seealso cref="DatabaseType"></param>
+        /// <returns></returns>
+        internal static DbConnection GetDbConnection(DatabaseType dbType)
+        {
+            DbConnection connection = null;
+            switch (dbType)
+            {
+                case DatabaseType.MsSql:
+                    connection = new SqlConnection();
+                    break;
+                case DatabaseType.Oracle:
+                    connection = new OracleConnection();
+                    break;
+            }
+            return connection;
+        }
+
+
+        /// <summary>
+        /// 取得到指定数据库连接的DataAdapter对象
+        /// </summary>
+        /// <param name="conn"></param>
+        /// <returns></returns>
+        internal static DbDataAdapter GetDbDataAdapter(string selectString, DbConnection conn)
+        {
+            DbDataAdapter adapter = null;
+            if (conn.GetType() == typeof(SqlConnection))
+                adapter = new SqlDataAdapter(selectString, (SqlConnection)conn);
+
+            if (conn.GetType() == typeof(OracleConnection))
+                adapter = new OracleDataAdapter(selectString, (OracleConnection)conn);
+
+            return adapter;
+        }
+
         /// <summary>
         /// 取得到指定数据库连接的DbCommand对象
         /// </summary>
@@ -125,6 +164,41 @@ namespace SqlSync
             oracmd.ExecuteNonQuery();
         }
 
+        internal static void UpdateSyncInfo(SyncLog log, SqlConnection conn)
+        {
+            string sql = "delete form SyncInfo where TableName = @TableName ;"
+                        + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(@TableName,@ModifyTime,@SyncTime);";
+            DbCommand cmd = Helper.GetDbCommand(conn);
+
+            SqlParameter[] parameters = { new SqlParameter("@TableName", log.TableName)
+                                        ,new SqlParameter("@ModifyTime", log.ModifyTime)
+                                        ,new SqlParameter("@SyncTime", DateTime.Now)
+                                        };
+
+            cmd.CommandText = sql;
+            cmd.Parameters.AddRange(parameters);
+            cmd.ExecuteNonQuery();
+        }
+
+
+        internal static void UpdateSyncInfo(SyncLog log, OracleConnection conn)
+        {
+            string sql = "delete form SyncInfo where TableName = :TableName ;"
+                        + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(:TableName,:ModifyTime,:SyncTime);";
+            DbCommand cmd = Helper.GetDbCommand(conn);
+
+            OracleParameter[] parameters = { new OracleParameter(":TableName", log.TableName)
+                                        ,new OracleParameter(":ModifyTime", log.ModifyTime)
+                                        ,new OracleParameter(":SyncTime", DateTime.Now)
+                                        };
+
+            cmd.CommandText = sql;
+            cmd.Parameters.AddRange(parameters);
+            cmd.ExecuteNonQuery();
+        }
+
+
+
         /// <summary>
         /// 向数据源表中写入更新成功或失败的状态
         /// </summary>
@@ -149,6 +223,14 @@ namespace SqlSync
             DbCommand stateCommand = Helper.GetDbCommand(conn);
             stateCommand.CommandText = stateSql;
             stateCommand.ExecuteNonQuery();
+        }
+
+
+
+
+        internal static void CreateSyncInfoTable()
+        {
+            //throw new NotImplementedException();
         }
 
         /// <summary>
