@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Xml.Serialization;
+using SqlSync.Sync;
 
 namespace SqlSync
 {
@@ -72,7 +72,20 @@ namespace SqlSync
         /// <summary>
         /// 同步时被忽略的字段
         /// </summary>
+        [XmlIgnore]
         public List<string> IgnoreFields { get; set; }
+
+        [XmlElement("IgnoreFields")]
+        public string ignoreFields
+        {
+            get { return string.Join(",", IgnoreFields.ToArray()); }
+            set
+            {
+                string[] es = value.Split(',');
+                foreach (string e in es)
+                    IgnoreFields.Add(e.ToLower());
+            }
+        }
 
         /// <summary>
         /// 目标表
@@ -88,6 +101,29 @@ namespace SqlSync
         /// </summary>
         public SyncPriority Priority { get; set; } = SyncPriority.Normal;
 
+
+        /// <summary>
+        /// 对目标表进行的操作
+        /// 如果配置为Insert和Update同时存在，则Update结果大于0时，Insert不再执行
+        /// </summary>
+        [XmlIgnore]
+        public List<SyncAction> Action { get; set; } = new List<SyncAction>();
+
+        [XmlElement("Action")]
+        public string action
+        {
+            get { return string.Join(",", Action.ToArray()); }
+            set
+            {
+                if (!string.IsNullOrEmpty(value))
+                {
+                    string[] es = value.Split(',');
+                    foreach (string e in es)
+                        Action.Add((SyncAction)Enum.Parse(typeof(SyncAction), e));
+                }
+            }
+        }
+
         public SyncTable()
         {
             this.Key = new List<string>();
@@ -97,6 +133,7 @@ namespace SqlSync
             this.SyncErrorsField = "SyncErrors";
             //this.IgnoreFields.Add(this.SyncStateField.ToLower());
             //this.IgnoreFields.Add(this.SyncErrorsField.ToLower());
+            //this.Action.AddRange(new List<SyncAction> { SyncAction.Insert, SyncAction.Update });
         }
 
         public SyncTable(string tableName, string key, string queryString, string destinationTable, SyncDirection direction)
@@ -163,9 +200,9 @@ namespace SqlSync
         public override string ToString()
         {
             string[] symbol = { ">", "<", "<>" };
-            
+
             return string.Format("{0}{1}{2}", this.MasterTable, symbol[(int)this.Direction], this.SlaveTable);
         }
-       
+
     }
 }
