@@ -38,7 +38,10 @@ namespace SqlSync
             //c.SyncTables[0].Key.Add("key1");
             //c.SyncTables[0].Key.Add("key2");
             //c.SyncTables[0].Key.Add("key3");
-            //Helper.SaveConfig(c);
+            //c.SyncTables[0].FieldMappings.Add("sid", "sid2");
+            Helper.SaveConfig(c);
+
+
             c = Helper.ReadConfig();
 
             //更新状态栏
@@ -161,8 +164,9 @@ namespace SqlSync
                     var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
 
                     //更新源数据状态
-                    foreach (DataRow row in resut.Rows)
-                        Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
+                    if (tab.UpdateSyncState)
+                        foreach (DataRow row in resut.Rows)
+                            Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
                     log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows.Count));
                 }
 
@@ -188,8 +192,9 @@ namespace SqlSync
                     var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
 
                     //更新源数据状态
-                    foreach (DataRow row in resut.Rows)
-                        Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
+                    if (tab.UpdateSyncState)
+                        foreach (DataRow row in resut.Rows)
+                            Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
                     log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
                 }
                 sqlConn.Close();
@@ -250,13 +255,16 @@ namespace SqlSync
                         //如果是要被忽略的字段,则跳过本列
                         if (tab.IgnoreFields.Contains(col.ColumnName.ToLower()))
                             continue;
-                        updateSql.AppendFormat(@"{0}=", col.ColumnName);
 
-                        insertSql.AppendFormat(@"{0},", col.ColumnName);
+                        string colMapping = tab.FieldMappings.ContainsKey(col.ColumnName) ? tab.FieldMappings[col.ColumnName] : col.ColumnName;
+
+                        updateSql.AppendFormat(@"{0}=", colMapping);
+
+                        insertSql.AppendFormat(@"{0},", colMapping);
                         if (row[col.ColumnName] != System.DBNull.Value)
                         {
                             if (tab.Key.Contains(col.ColumnName.ToLower()))
-                                whereSql.AppendFormat(" AND {0} = {1}", col.ColumnName,
+                                whereSql.AppendFormat(" AND {0} = {1}", colMapping,
                                                                     string.Format(dataFormat[col.DataType], row[col.ColumnName].ToString()));
                             if (col.DataType != typeof(bool))
                             {

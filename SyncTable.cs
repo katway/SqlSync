@@ -124,6 +124,17 @@ namespace SqlSync
             }
         }
 
+        /// <summary>
+        /// 字段映射
+        /// </summary>
+        public SerializableDictionary<string, string> FieldMappings { get; set; } = new SerializableDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// 是否向源表中写入同步状态
+        /// </summary>
+        public bool UpdateSyncState { get; set; }
+
+
         public SyncTable()
         {
             this.Key = new List<string>();
