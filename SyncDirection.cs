@@ -6,6 +6,7 @@ namespace SqlSync
 {
     public enum SyncDirection
     {
+        None,
         Push,
         Pull,
         Sync

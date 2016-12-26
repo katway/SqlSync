@@ -207,11 +207,9 @@ namespace SqlSync
             return string.Format(QueryStringFormat, tableName);
         }
 
-
         public override string ToString()
         {
-            string[] symbol = { ">", "<", "<>" };
-
+            string[] symbol = { "=", ">", "<", "<>" };
             return string.Format("{0}{1}{2}", this.MasterTable, symbol[(int)this.Direction], this.SlaveTable);
         }
 
