@@ -51,7 +51,8 @@ Exam.Log       - Hello
       <param name="datePattern" value="yyyyMMdd.log" />    <!--输出日期格式-->
       <param name="maximumFileSize" value="1MB" />      <!--单个日志的最大容量-->
       <param name="staticLogFileName" value="false" /><!--true表示当前最新日志文件名永远为file节中-->
-
+      <Encoding value="UTF-8" />    <!--使用Unicode编码-->
+      
       <layout type="log4net.Layout.PatternLayout">
         <param name="Header" value="[Header]\r\n"/>
         <param name="Footer" value="[Footer]\r\n"/>

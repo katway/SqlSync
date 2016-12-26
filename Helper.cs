@@ -166,12 +166,13 @@ namespace SqlSync
 
         internal static void UpdateSyncInfo(SyncLog log, SqlConnection conn)
         {
-            string sql = "delete form SyncInfo where TableName = @TableName ;"
+            string sql = "delete from SyncInfo where TableName = @TableName ;"
                         + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(@TableName,@ModifyTime,@SyncTime);";
             DbCommand cmd = Helper.GetDbCommand(conn);
 
+
             SqlParameter[] parameters = { new SqlParameter("@TableName", log.TableName)
-                                        ,new SqlParameter("@ModifyTime", log.ModifyTime)
+                                        ,new SqlParameter("@ModifyTime", log.ModifyTime )
                                         ,new SqlParameter("@SyncTime", DateTime.Now)
                                         };
 
@@ -183,14 +184,16 @@ namespace SqlSync
 
         internal static void UpdateSyncInfo(SyncLog log, OracleConnection conn)
         {
-            string sql = "delete form SyncInfo where TableName = :TableName ;"
-                        + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(:TableName,:ModifyTime,:SyncTime);";
+            string sql = "begin "
+                        + " delete from SyncInfo where TableName = :TableName ;"
+                        + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(:TableName,:ModifyTime,:SyncTime);"
+                        + " end;";
             DbCommand cmd = Helper.GetDbCommand(conn);
 
-            OracleParameter[] parameters = { new OracleParameter(":TableName", log.TableName)
-                                        ,new OracleParameter(":ModifyTime", log.ModifyTime)
-                                        ,new OracleParameter(":SyncTime", DateTime.Now)
-                                        };
+            OracleParameter[] parameters = {new OracleParameter(":TableName", log.TableName),
+                                            new OracleParameter(":ModifyTime",log.ModifyTime),
+                                            new OracleParameter(":SyncTime", DateTime.Now)
+                                            };
 
             cmd.CommandText = sql;
             cmd.Parameters.AddRange(parameters);

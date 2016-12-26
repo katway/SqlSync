@@ -10,6 +10,7 @@ using System.Threading;
 using log4net;
 using System.Linq;
 using SqlSync.Extensions;
+using System.IO;
 
 namespace SqlSync
 {
@@ -29,12 +30,11 @@ namespace SqlSync
         {
             Config c = new Config();
             c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
-            c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.114)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=ZHIFY;Password=ZHIFY;";
+            c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.113)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
             //c.SyncTables.Add(new SyncTable("Employee", "outid"));
             c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
-            c.SyncTables[0].Key.Add("key1");
-            c.SyncTables[0].Key.Add("key2");
-            c.SyncTables[0].Key.Add("key3");
+            c.SyncTables[0].Key.Add("sid");
+
             Helper.SaveConfig(c);
             c = Helper.ReadConfig();
 
@@ -165,26 +165,19 @@ namespace SqlSync
                 }
                 #endregion
 
-
+                SyncDirection direct = GetDirectionBySyncLog(config, tab, sqlConn, oraConn);
                 ///下面进行单向同步
-                if ((tab.Direction == SyncDirection.Push) || (tab.Direction == SyncDirection.Sync))
+                if ((direct == SyncDirection.Push) || (direct == SyncDirection.Sync))
                 {
-                    if (GetDirectionBySyncLog(config, tab, sqlConn, oraConn) == SyncDirection.Push)
-                    {
-                        PushData(tab, sqlConn, oraConn);
-                        Helper.UpdateSyncInfo(tab.SyncLogsMaster, oraConn);
-
-                    }
+                    PushData(tab, sqlConn, oraConn);
+                    Helper.UpdateSyncInfo(tab.SyncLogsMaster, oraConn);
                 }
 
                 ///下面进行异向同步
-                if ((tab.Direction == SyncDirection.Pull) || tab.Direction == SyncDirection.Sync)
+                if ((direct == SyncDirection.Pull) || direct == SyncDirection.Sync)
                 {
-                    if (GetDirectionBySyncLog(config, tab, sqlConn, oraConn) == SyncDirection.Pull)
-                    {
-                        PullData(tab, sqlConn, oraConn);
-                        Helper.UpdateSyncInfo(tab.SyncLogsSlave, sqlConn);
-                    }
+                    PullData(tab, sqlConn, oraConn);
+                    Helper.UpdateSyncInfo(tab.SyncLogsSlave, sqlConn);
                 }
                 sqlConn.Close();
                 oraConn.Close();
@@ -193,20 +186,18 @@ namespace SqlSync
 
         private SyncDirection GetDirectionBySyncLog(Config config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
-            SyncDirection direct = SyncDirection.None;
+            SyncDirection direct = tab.Direction;
 
             StringBuilder selectSql = new StringBuilder();
             DataSet ds = new DataSet();
             IList<SyncLog> logs;
-            SyncLog masterLog = null;
-            SyncLog slaveLog = null;
 
             Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.MasterTable)
                                         , sqlConn)
                                    .Fill(ds);
             logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
             if (logs.Count > 0)
-                masterLog = logs[0];
+                tab.SyncLogsMaster = logs[0];
 
             ds.Clear();
             Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.SlaveTable)
@@ -214,16 +205,19 @@ namespace SqlSync
                                    .Fill(ds);
             logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
             if (logs.Count > 0)
-                slaveLog = logs[0];
+                tab.SyncLogsSlave = logs[0];
 
 
-            if (masterLog.ModifyTime > slaveLog.ModifyTime)
-                direct = SyncDirection.Push;
-            else if (masterLog.ModifyTime < slaveLog.ModifyTime)
-                direct = SyncDirection.Pull;
-            else
-                direct = SyncDirection.None;
+            if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
+                if (tab.SyncLogsMaster.ModifyTime > tab.SyncLogsSlave.ModifyTime)
+                    direct = SyncDirection.Push;
+                else if (tab.SyncLogsMaster.ModifyTime < tab.SyncLogsSlave.ModifyTime)
+                    direct = SyncDirection.Pull;
+                else
+                    direct = SyncDirection.None;
 
+            tab.SyncLogsMaster.TableName = tab.MasterTable;
+            tab.SyncLogsSlave.TableName = tab.SlaveTable;
             return direct;
         }
 
@@ -462,6 +456,31 @@ namespace SqlSync
                 foreach (DataRow row in resut.Rows)
                     Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
             log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
+        }
+
+        private void txtLog_DoubleClick(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                FileStream fs = new FileStream(ofd.FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                StreamReader m_streamReader = new StreamReader(fs, Encoding.UTF8);
+                //使用StreamReader类来读取文件
+                m_streamReader.BaseStream.Seek(0, SeekOrigin.Begin);
+                // 从数据流中读取每一行，直到文件的最后一行，并在richTextBox1中显示出内容
+                this.txtLog.Text = "";
+                string strLine = m_streamReader.ReadLine();
+                while (strLine != null)
+                {
+                    this.txtLog.Text += strLine + "\n";
+                    strLine = m_streamReader.ReadLine();
+                }
+                //关闭此StreamReader对象
+                m_streamReader.Close();
+                fs.Close();
+            }
+
+
         }
     }
 }
