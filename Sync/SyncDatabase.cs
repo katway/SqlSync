@@ -1,4 +1,4 @@
-﻿namespace SqlSync
+﻿namespace SqlSync.Sync
 {
     /// <summary>
     /// 要进行同步的数据库

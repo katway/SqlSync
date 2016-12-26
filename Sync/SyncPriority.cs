@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SqlSync
+namespace SqlSync.Sync
 {
     public enum SyncPriority
     {

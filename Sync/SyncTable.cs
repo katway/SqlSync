@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Xml.Serialization;
 using SqlSync.Sync;
 
-namespace SqlSync
+namespace SqlSync.Sync
 {
     [Serializable]
     public class SyncTable

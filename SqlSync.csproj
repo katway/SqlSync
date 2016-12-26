@@ -117,12 +117,12 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Compile Include="SyncDatabase.cs" />
-    <Compile Include="SyncDirection.cs" />
-    <Compile Include="SyncInfo.cs" />
-    <Compile Include="SyncPriority.cs" />
-    <Compile Include="SyncState.cs" />
-    <Compile Include="SyncTable.cs" />
+    <Compile Include="Sync\SyncDatabase.cs" />
+    <Compile Include="Sync\SyncDirection.cs" />
+    <Compile Include="Sync\SyncInfo.cs" />
+    <Compile Include="Sync\SyncPriority.cs" />
+    <Compile Include="Sync\SyncState.cs" />
+    <Compile Include="Sync\SyncTable.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">

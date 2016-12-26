@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Xml.Serialization;
 
-namespace SqlSync
+namespace SqlSync.Sync
 {
     [Serializable]
     public class SyncInfo

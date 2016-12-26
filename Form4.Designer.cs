@@ -55,7 +55,7 @@
             this.btnStart.TabIndex = 0;
             this.btnStart.Text = "开始";
             this.btnStart.UseVisualStyleBackColor = true;
-            this.btnStart.Click += new System.EventHandler(this.btnCopy_Click);
+            this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
             // stsStatus
             // 

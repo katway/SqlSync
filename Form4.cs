@@ -12,6 +12,7 @@ using System.Linq;
 using SqlSync.Extensions;
 using System.IO;
 using System.Drawing;
+using SqlSync.Sync;
 
 namespace SqlSync
 {
@@ -27,7 +28,7 @@ namespace SqlSync
         }
 
 
-        private void btnCopy_Click(object sender, EventArgs e)
+        private void btnStart_Click(object sender, EventArgs e)
         {
             Config c = new Config();
             //c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
@@ -38,7 +39,6 @@ namespace SqlSync
             //c.SyncTables[0].FieldMappings.Add("sid", "norder");
 
             Helper.SaveConfig(c);
-
 
             c = Helper.ReadConfig();
 
@@ -87,6 +87,8 @@ namespace SqlSync
             this.btnStop.Enabled = true;
         }
 
+
+        #region 功能代码
         public void TransferData(Config config, List<SyncTable> tables)
         {
             //建立到源数据的连接
@@ -200,7 +202,61 @@ namespace SqlSync
             return direct;
         }
 
+        public void PushData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
+        {
+            DataSet ds = new DataSet();
 
+            //读取源数据
+            DbDataAdapter sourceAdp = new SqlDataAdapter(tab.GetQueryString(tab.MasterTable), sqlConn);
+            sourceAdp.Fill(ds, tab.MasterTable);
+            DataTable dt = ds.Tables[tab.MasterTable];
+
+            //更新状态栏
+            this.Invoke(new MethodInvoker(delegate ()
+            {
+                stpProgress.Maximum = dt.Rows.Count;
+                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
+            }));
+
+            //写入目标库
+            dt.TableName = tab.SlaveTable;
+            var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
+
+            //更新源数据状态
+            if (tab.UpdateSyncState)
+                foreach (DataRow row in resut.Rows)
+                    Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
+            log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows.Count));
+
+        }
+
+
+        public void PullData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
+        {
+
+            DataSet ds = new DataSet();
+            //读取源数据
+            DbDataAdapter sourceAdp = new OracleDataAdapter(tab.GetQueryString(tab.SlaveTable), oraConn);
+            sourceAdp.Fill(ds, tab.SlaveTable);
+            DataTable dt = ds.Tables[tab.SlaveTable];
+
+            //更新状态栏
+            this.Invoke(new MethodInvoker(delegate ()
+            {
+                stpProgress.Maximum = dt.Rows.Count;
+                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
+            }));
+
+            //写入目标库
+            dt.TableName = tab.MasterTable;
+            var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
+
+            //更新源数据状态
+            if (tab.UpdateSyncState)
+                foreach (DataRow row in resut.Rows)
+                    Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
+            log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
+        }
 
         /// <summary>
         /// 将DataTable中的数据写入到目标数据库
@@ -341,20 +397,11 @@ namespace SqlSync
                 }
             return res;
         }
+        #endregion
 
-        private void Form4_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            foreach (var th in SyncThreads)
-                if (th != null)
-                    th.Abort();
-            Environment.Exit(Environment.ExitCode);
-        }
-
+        #region 交互事件
         private void btnPause_Click(object sender, EventArgs e)
         {
-            //string[] text = { "暂停", "继续" };
-            //((Control)sender).Tag = ((((Control)sender).Tag as int) + 1) / 2;
-            //((Control)sender).Text =
             string tmp = ((Control)sender).Text;
             ((Control)sender).Text = ((Control)sender).Tag as string;
             ((Control)sender).Tag = tmp;
@@ -388,63 +435,6 @@ namespace SqlSync
         }
 
 
-        public void PushData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
-        {
-            DataSet ds = new DataSet();
-
-            //读取源数据
-            DbDataAdapter sourceAdp = new SqlDataAdapter(tab.GetQueryString(tab.MasterTable), sqlConn);
-            sourceAdp.Fill(ds, tab.MasterTable);
-            DataTable dt = ds.Tables[tab.MasterTable];
-
-            //更新状态栏
-            this.Invoke(new MethodInvoker(delegate ()
-            {
-                stpProgress.Maximum = dt.Rows.Count;
-                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
-            }));
-
-            //写入目标库
-            dt.TableName = tab.SlaveTable;
-            var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
-
-            //更新源数据状态
-            if (tab.UpdateSyncState)
-                foreach (DataRow row in resut.Rows)
-                    Helper.UpdateSyncState(SyncDirection.Push, sqlConn, tab, row);
-            log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Push, dt.Rows.Count, resut.Rows.Count));
-
-        }
-
-
-        public void PullData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
-        {
-
-            DataSet ds = new DataSet();
-            //读取源数据
-            DbDataAdapter sourceAdp = new OracleDataAdapter(tab.GetQueryString(tab.SlaveTable), oraConn);
-            sourceAdp.Fill(ds, tab.SlaveTable);
-            DataTable dt = ds.Tables[tab.SlaveTable];
-
-            //更新状态栏
-            this.Invoke(new MethodInvoker(delegate ()
-                            {
-                                stpProgress.Maximum = dt.Rows.Count;
-                                stslRows.Text = string.Format(@"{0}/{1}", 0, dt.Rows.Count);
-                            }));
-
-            //写入目标库
-            dt.TableName = tab.MasterTable;
-            var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
-
-            //更新源数据状态
-            if (tab.UpdateSyncState)
-                foreach (DataRow row in resut.Rows)
-                    Helper.UpdateSyncState(SyncDirection.Pull, oraConn, tab, row);
-            log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
-        }
-
-
         private void txtLog_DoubleClick(object sender, EventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
@@ -467,12 +457,18 @@ namespace SqlSync
                 m_streamReader.Close();
                 fs.Close();
             }
-
-
         }
 
+        private void Form4_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            foreach (var th in SyncThreads)
+                if (th != null)
+                    th.Abort();
+            Environment.Exit(Environment.ExitCode);
+        }
+        #endregion
 
-
+        #region 自触发事件
         private void OraConn_StateChange(object sender, StateChangeEventArgs e)
         {
             Color c = Color.Black;
@@ -526,9 +522,7 @@ namespace SqlSync
                     break;
             }
             this.Invoke(new MethodInvoker(delegate () { this.tsslSqlState.BackColor = c; }));
-
         }
-
-
+        #endregion
     }
 }
