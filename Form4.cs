@@ -19,7 +19,7 @@ namespace SqlSync
     public partial class Form4 : Form
     {
         List<Thread> SyncThreads = new List<Thread>();
-        log4net.ILog log;       
+        log4net.ILog log;
 
         public Form4()
         {
@@ -90,6 +90,9 @@ namespace SqlSync
             //建立到源数据的连接
             SqlConnection sqlConn = new SqlConnection(config.LocalConnectionString);
             OracleConnection oraConn = new OracleConnection(config.RemoteConnectionString);
+
+            sqlConn.StateChange += SqlConn_StateChange;
+            oraConn.StateChange += OraConn_StateChange;
 
             StringBuilder selectSql = new StringBuilder();
             DbDataAdapter myCommand = null;
@@ -195,6 +198,62 @@ namespace SqlSync
                 sqlConn.Close();
                 oraConn.Close();
             }
+        }
+
+        private void OraConn_StateChange(object sender, StateChangeEventArgs e)
+        {
+            Color c = Color.Black;
+            switch (e.CurrentState)
+            {
+                case ConnectionState.Open:
+                    c = Color.DarkSeaGreen;
+                    break;
+                case ConnectionState.Fetching:
+                    c = Color.LawnGreen;
+                    break;
+                case ConnectionState.Executing:
+                    c = Color.Green;
+                    break;
+                case ConnectionState.Connecting:
+                    c = Color.GreenYellow;
+                    break;
+                case ConnectionState.Closed:
+                    c = SystemColors.Control;
+                    break;
+                case ConnectionState.Broken:
+                    c = Color.Red;
+                    break;
+            }
+            this.Invoke(new MethodInvoker(delegate () { this.tsslOracleState.BackColor = c; }));
+        }
+
+        private void SqlConn_StateChange(object sender, StateChangeEventArgs e)
+        {
+
+            Color c = Color.Black;
+            switch (e.CurrentState)
+            {
+                case ConnectionState.Open:
+                    c = Color.DarkSeaGreen;
+                    break;
+                case ConnectionState.Fetching:
+                    c = Color.LawnGreen;
+                    break;
+                case ConnectionState.Executing:
+                    c = Color.Green;
+                    break;
+                case ConnectionState.Connecting:
+                    c = Color.GreenYellow;
+                    break;
+                case ConnectionState.Closed:
+                    c = SystemColors.Control;
+                    break;
+                case ConnectionState.Broken:
+                    c = Color.Red;
+                    break;
+            }
+            this.Invoke(new MethodInvoker(delegate () { this.tsslSqlState.BackColor = c; }));
+
         }
 
 
@@ -373,5 +432,32 @@ namespace SqlSync
                 if (th != null)
                     th.Abort();
         }
+
+        private void txtLog_DoubleClick(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                FileStream fs = new FileStream(ofd.FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                StreamReader m_streamReader = new StreamReader(fs, Encoding.UTF8);
+                //使用StreamReader类来读取文件
+                m_streamReader.BaseStream.Seek(0, SeekOrigin.Begin);
+                // 从数据流中读取每一行，直到文件的最后一行，并在richTextBox1中显示出内容
+                this.txtLog.Text = "";
+                string strLine = m_streamReader.ReadLine();
+                while (strLine != null)
+                {
+                    this.txtLog.Text += strLine + "\n";
+                    strLine = m_streamReader.ReadLine();
+                }
+                //关闭此StreamReader对象
+                m_streamReader.Close();
+                fs.Close();
+            }
+
+
+        }
+
     }
 }
