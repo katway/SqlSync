@@ -135,6 +135,14 @@ namespace SqlSync
         public bool UpdateSyncState { get; set; }
 
 
+        [XmlIgnore]
+        public SyncLog SyncLogsMaster { get; set; } = new SyncLog();
+        [XmlIgnore]
+        public SyncLog SyncLogsSlave { get; set; } = new SyncLog();
+
+
+
+
         public SyncTable()
         {
             this.Key = new List<string>();

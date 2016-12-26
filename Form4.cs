@@ -11,6 +11,7 @@ using log4net;
 using System.Linq;
 using SqlSync.Extensions;
 using System.IO;
+using System.Drawing;
 
 namespace SqlSync
 {
@@ -530,30 +531,6 @@ namespace SqlSync
             log.Info(string.Format("方向:{0},需同步纪录数:{1},处理纪录数:{2}.", SyncDirection.Pull, dt.Rows.Count, resut.Rows.Count));
         }
 
-        private void txtLog_DoubleClick(object sender, EventArgs e)
-        {
-            OpenFileDialog ofd = new OpenFileDialog();
-            if (ofd.ShowDialog() == DialogResult.OK)
-            {
-                FileStream fs = new FileStream(ofd.FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                StreamReader m_streamReader = new StreamReader(fs, Encoding.UTF8);
-                //使用StreamReader类来读取文件
-                m_streamReader.BaseStream.Seek(0, SeekOrigin.Begin);
-                // 从数据流中读取每一行，直到文件的最后一行，并在richTextBox1中显示出内容
-                this.txtLog.Text = "";
-                string strLine = m_streamReader.ReadLine();
-                while (strLine != null)
-                {
-                    this.txtLog.Text += strLine + "\n";
-                    strLine = m_streamReader.ReadLine();
-                }
-                //关闭此StreamReader对象
-                m_streamReader.Close();
-                fs.Close();
-            }
-
-
-        }
 
         private void txtLog_DoubleClick(object sender, EventArgs e)
         {
