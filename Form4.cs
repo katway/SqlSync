@@ -30,14 +30,13 @@ namespace SqlSync
         private void btnCopy_Click(object sender, EventArgs e)
         {
             Config c = new Config();
-            //c.LocalConnectionString = @"server=localhost;uid=sa;pwd='123456';database='ZhiFY'";
-            //c.RemoteConnectionString = @"Data Source=orcl;Persist Security Info=True;User ID=zhify;Password=zhify;";
+            //c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
+            //c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.113)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
             ////c.SyncTables.Add(new SyncTable("Employee", "outid"));
             //c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
-            //c.SyncTables[0].Key.Add("key1");
-            //c.SyncTables[0].Key.Add("key2");
-            //c.SyncTables[0].Key.Add("key3");
-            //c.SyncTables[0].FieldMappings.Add("sid", "sid2");
+            //c.SyncTables[0].Key.Add("sid");
+            //c.SyncTables[0].FieldMappings.Add("sid", "norder");
+
             Helper.SaveConfig(c);
 
 
@@ -88,36 +87,6 @@ namespace SqlSync
             this.btnStop.Enabled = true;
         }
 
-
-        public Config ConfigLinkSyncLog(Config config)
-        {
-            if (!config.SyncInfo.Enable) return config;
-
-            DbConnection masterConn = Helper.GetDbConnection(DatabaseType.MsSql);
-            DbConnection slaveConn = Helper.GetDbConnection(DatabaseType.Oracle);
-            masterConn.ConnectionString = config.LocalConnectionString;
-            slaveConn.ConnectionString = config.RemoteConnectionString;
-
-            masterConn.Open();
-            slaveConn.Open();
-            DataSet ds = null;
-            Helper.GetDbDataAdapter(string.Format("select * from {0}", config.SyncInfo.TableName)
-                                        , masterConn)
-                                   .Fill(ds);
-            config.SyncInfo.SyncLogsMaster = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
-
-            Helper.GetDbDataAdapter(string.Format("select * from {0}", config.SyncInfo.TableName)
-                                        , slaveConn)
-                                  .Fill(ds);
-            config.SyncInfo.SyncLogsMaster = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
-
-
-
-            if (masterConn.State == ConnectionState.Open) masterConn.Close();
-            if (masterConn.State == ConnectionState.Open) slaveConn.Close();
-            return null;
-        }
-
         public void TransferData(Config config, List<SyncTable> tables)
         {
             //建立到源数据的连接
@@ -131,13 +100,6 @@ namespace SqlSync
             {
 
                 log.Info(string.Format("开始同步{0}到{1},方向:{2}.", tab.MasterTable, tab.SlaveTable, tab.Direction));
-                //更新状态栏
-                this.Invoke(new MethodInvoker(
-                        delegate ()
-                        {
-                            this.stsTables.Text = string.Format(@"{0}/{1}", tables.IndexOf(tab) + 1, tables.Count);
-                            this.stslTable.Text = tab.ToString();
-                        }));
 
                 sqlConn.Open();
                 oraConn.Open();
@@ -174,6 +136,15 @@ namespace SqlSync
                 #endregion
 
                 SyncDirection direct = GetDirectionBySyncLog(config, tab, sqlConn, oraConn);
+
+                //更新状态栏
+                this.Invoke(new MethodInvoker(
+                        delegate ()
+                        {
+                            this.stsTables.Text = string.Format(@"{0}/{1}", tables.IndexOf(tab) + 1, tables.Count);
+                            this.stslTable.Text = tab.ToString(direct);
+                        }));
+
                 ///下面进行单向同步
                 if ((direct == SyncDirection.Push) || (direct == SyncDirection.Sync))
                 {
@@ -227,62 +198,6 @@ namespace SqlSync
             tab.SyncLogsMaster.TableName = tab.MasterTable;
             tab.SyncLogsSlave.TableName = tab.SlaveTable;
             return direct;
-        }
-
-        private void OraConn_StateChange(object sender, StateChangeEventArgs e)
-        {
-            Color c = Color.Black;
-            switch (e.CurrentState)
-            {
-                case ConnectionState.Open:
-                    c = Color.DarkSeaGreen;
-                    break;
-                case ConnectionState.Fetching:
-                    c = Color.LawnGreen;
-                    break;
-                case ConnectionState.Executing:
-                    c = Color.Green;
-                    break;
-                case ConnectionState.Connecting:
-                    c = Color.GreenYellow;
-                    break;
-                case ConnectionState.Closed:
-                    c = SystemColors.Control;
-                    break;
-                case ConnectionState.Broken:
-                    c = Color.Red;
-                    break;
-            }
-            this.Invoke(new MethodInvoker(delegate () { this.tsslOracleState.BackColor = c; }));
-        }
-
-        private void SqlConn_StateChange(object sender, StateChangeEventArgs e)
-        {
-
-            Color c = Color.Black;
-            switch (e.CurrentState)
-            {
-                case ConnectionState.Open:
-                    c = Color.DarkSeaGreen;
-                    break;
-                case ConnectionState.Fetching:
-                    c = Color.LawnGreen;
-                    break;
-                case ConnectionState.Executing:
-                    c = Color.Green;
-                    break;
-                case ConnectionState.Connecting:
-                    c = Color.GreenYellow;
-                    break;
-                case ConnectionState.Closed:
-                    c = SystemColors.Control;
-                    break;
-                case ConnectionState.Broken:
-                    c = Color.Red;
-                    break;
-            }
-            this.Invoke(new MethodInvoker(delegate () { this.tsslSqlState.BackColor = c; }));
-
         }
 
 
@@ -473,8 +388,6 @@ namespace SqlSync
         }
 
 
-
-
         public void PushData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
             DataSet ds = new DataSet();
@@ -547,7 +460,7 @@ namespace SqlSync
                 string strLine = m_streamReader.ReadLine();
                 while (strLine != null)
                 {
-                    this.txtLog.Text += strLine + "\n";
+                    this.txtLog.Text += strLine + "\r\n";
                     strLine = m_streamReader.ReadLine();
                 }
                 //关闭此StreamReader对象
@@ -557,6 +470,65 @@ namespace SqlSync
 
 
         }
+
+
+
+        private void OraConn_StateChange(object sender, StateChangeEventArgs e)
+        {
+            Color c = Color.Black;
+            switch (e.CurrentState)
+            {
+                case ConnectionState.Open:
+                    c = Color.Green;
+                    break;
+                case ConnectionState.Fetching:
+                    c = Color.LawnGreen;
+                    break;
+                case ConnectionState.Executing:
+                    c = Color.Green;
+                    break;
+                case ConnectionState.Connecting:
+                    c = Color.GreenYellow;
+                    break;
+                case ConnectionState.Closed:
+                    c = SystemColors.Control;
+                    break;
+                case ConnectionState.Broken:
+                    c = Color.Red;
+                    break;
+            }
+            this.Invoke(new MethodInvoker(delegate () { this.tsslOracleState.BackColor = c; }));
+        }
+
+        private void SqlConn_StateChange(object sender, StateChangeEventArgs e)
+        {
+
+            Color c = Color.Black;
+            switch (e.CurrentState)
+            {
+                case ConnectionState.Open:
+                    c = Color.Green;
+                    break;
+                case ConnectionState.Fetching:
+                    c = Color.LawnGreen;
+                    break;
+                case ConnectionState.Executing:
+                    c = Color.Green;
+                    break;
+                case ConnectionState.Connecting:
+                    c = Color.GreenYellow;
+                    break;
+                case ConnectionState.Closed:
+                    c = SystemColors.Control;
+                    break;
+                case ConnectionState.Broken:
+                    c = Color.Red;
+                    break;
+            }
+            this.Invoke(new MethodInvoker(delegate () { this.tsslSqlState.BackColor = c; }));
+
+        }
+
 
     }
 }

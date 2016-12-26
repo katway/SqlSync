@@ -31,6 +31,8 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form4));
             this.btnStart = new System.Windows.Forms.Button();
             this.stsStatus = new System.Windows.Forms.StatusStrip();
+            this.tsslSqlState = new System.Windows.Forms.ToolStripStatusLabel();
+            this.tsslOracleState = new System.Windows.Forms.ToolStripStatusLabel();
             this.stsTables = new System.Windows.Forms.ToolStripStatusLabel();
             this.stslTable = new System.Windows.Forms.ToolStripStatusLabel();
             this.stslRows = new System.Windows.Forms.ToolStripStatusLabel();
@@ -39,8 +41,6 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.btnStop = new System.Windows.Forms.Button();
             this.btnPause = new System.Windows.Forms.Button();
-            this.tsslSqlState = new System.Windows.Forms.ToolStripStatusLabel();
-            this.tsslOracleState = new System.Windows.Forms.ToolStripStatusLabel();
             this.stsStatus.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
@@ -71,6 +71,26 @@
             this.stsStatus.Size = new System.Drawing.Size(664, 26);
             this.stsStatus.TabIndex = 2;
             this.stsStatus.Text = "stsStatus";
+            // 
+            // tsslSqlState
+            // 
+            this.tsslSqlState.BorderSides = ((System.Windows.Forms.ToolStripStatusLabelBorderSides)((((System.Windows.Forms.ToolStripStatusLabelBorderSides.Left | System.Windows.Forms.ToolStripStatusLabelBorderSides.Top) 
+            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Right) 
+            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Bottom)));
+            this.tsslSqlState.BorderStyle = System.Windows.Forms.Border3DStyle.Sunken;
+            this.tsslSqlState.Name = "tsslSqlState";
+            this.tsslSqlState.Size = new System.Drawing.Size(35, 21);
+            this.tsslSqlState.Text = "SQL";
+            // 
+            // tsslOracleState
+            // 
+            this.tsslOracleState.BorderSides = ((System.Windows.Forms.ToolStripStatusLabelBorderSides)((((System.Windows.Forms.ToolStripStatusLabelBorderSides.Left | System.Windows.Forms.ToolStripStatusLabelBorderSides.Top) 
+            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Right) 
+            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Bottom)));
+            this.tsslOracleState.BorderStyle = System.Windows.Forms.Border3DStyle.Sunken;
+            this.tsslOracleState.Name = "tsslOracleState";
+            this.tsslOracleState.Size = new System.Drawing.Size(38, 21);
+            this.tsslOracleState.Text = "ORA";
             // 
             // stsTables
             // 
@@ -150,26 +170,6 @@
             this.btnPause.UseVisualStyleBackColor = true;
             this.btnPause.Visible = false;
             this.btnPause.Click += new System.EventHandler(this.btnPause_Click);
-            // 
-            // tsslSqlState
-            // 
-            this.tsslSqlState.BorderSides = ((System.Windows.Forms.ToolStripStatusLabelBorderSides)((((System.Windows.Forms.ToolStripStatusLabelBorderSides.Left | System.Windows.Forms.ToolStripStatusLabelBorderSides.Top) 
-            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Right) 
-            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Bottom)));
-            this.tsslSqlState.BorderStyle = System.Windows.Forms.Border3DStyle.Raised;
-            this.tsslSqlState.Name = "tsslSqlState";
-            this.tsslSqlState.Size = new System.Drawing.Size(35, 21);
-            this.tsslSqlState.Text = "SQL";
-            // 
-            // tsslOracleState
-            // 
-            this.tsslOracleState.BorderSides = ((System.Windows.Forms.ToolStripStatusLabelBorderSides)((((System.Windows.Forms.ToolStripStatusLabelBorderSides.Left | System.Windows.Forms.ToolStripStatusLabelBorderSides.Top) 
-            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Right) 
-            | System.Windows.Forms.ToolStripStatusLabelBorderSides.Bottom)));
-            this.tsslOracleState.BorderStyle = System.Windows.Forms.Border3DStyle.Raised;
-            this.tsslOracleState.Name = "tsslOracleState";
-            this.tsslOracleState.Size = new System.Drawing.Size(38, 21);
-            this.tsslOracleState.Text = "ORA";
             // 
             // Form4
             // 

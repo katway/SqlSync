@@ -221,5 +221,12 @@ namespace SqlSync
             return string.Format("{0}{1}{2}", this.MasterTable, symbol[(int)this.Direction], this.SlaveTable);
         }
 
+        public string ToString(SyncDirection direct)
+        {
+            string[] symbol = { "=", ">", "<", "<>" };
+            string[] symbolFormat = { "{0}{1}{3}{2}", "{0}{1}{3}{2}", "{0}{3}{1}{2}", "{0}{1}{2}" };
+            return string.Format(symbolFormat[(int)direct], this.MasterTable, symbol[(int)this.Direction], this.SlaveTable, symbol[(int)direct]);
+        }
+
     }
 }
