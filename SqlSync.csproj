@@ -121,6 +121,7 @@
     <Compile Include="Sync\SyncDirection.cs" />
     <Compile Include="Sync\SyncInfo.cs" />
     <Compile Include="Sync\SyncPriority.cs" />
+    <Compile Include="Sync\SyncResult.cs" />
     <Compile Include="Sync\SyncState.cs" />
     <Compile Include="Sync\SyncTable.cs" />
   </ItemGroup>

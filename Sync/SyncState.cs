@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SqlSync.Sync
 {
-    enum SyncState
+    public enum SyncState
     {
         UnSync,
         Read,
