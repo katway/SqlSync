@@ -167,38 +167,44 @@ namespace SqlSync
 
         private SyncDirection GetDirectionBySyncLog(Config config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
+            tab.SyncLogsMaster.TableName = tab.MasterTable;
+            tab.SyncLogsSlave.TableName = tab.SlaveTable;
             SyncDirection direct = tab.Direction;
 
             StringBuilder selectSql = new StringBuilder();
             DataSet ds = new DataSet();
             IList<SyncLog> logs;
 
-            Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.MasterTable)
+            try
+            {
+                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.MasterTable)
                                         , sqlConn)
                                    .Fill(ds);
-            logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
-            if (logs.Count > 0)
-                tab.SyncLogsMaster = logs[0];
+                logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+                if (logs.Count > 0)
+                    tab.SyncLogsMaster = logs[0];
 
-            ds.Clear();
-            Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.SlaveTable)
-                                        , oraConn)
-                                   .Fill(ds);
-            logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
-            if (logs.Count > 0)
-                tab.SyncLogsSlave = logs[0];
+                ds.Clear();
+                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.SlaveTable)
+                                            , oraConn)
+                                       .Fill(ds);
+                logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+                if (logs.Count > 0)
+                    tab.SyncLogsSlave = logs[0];
 
-
-            if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
-                if (tab.SyncLogsMaster.ModifyTime > tab.SyncLogsSlave.ModifyTime)
-                    direct = SyncDirection.Push;
-                else if (tab.SyncLogsMaster.ModifyTime < tab.SyncLogsSlave.ModifyTime)
-                    direct = SyncDirection.Pull;
-                else
-                    direct = SyncDirection.None;
-
-            tab.SyncLogsMaster.TableName = tab.MasterTable;
-            tab.SyncLogsSlave.TableName = tab.SlaveTable;
+                if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
+                    if (tab.SyncLogsMaster.ModifyTime > tab.SyncLogsSlave.ModifyTime)
+                        direct = SyncDirection.Push;
+                    else if (tab.SyncLogsMaster.ModifyTime < tab.SyncLogsSlave.ModifyTime)
+                        direct = SyncDirection.Pull;
+                    else
+                        direct = SyncDirection.None;
+            }
+            catch (Exception ex)
+            {
+                log.Error(string.Format("读取{0}表遇到错误，可能是表不存在，详细信息见下条。", config.SyncInfo.TableName));
+                log.Error(ex);
+            }
             return direct;
         }
 
