@@ -38,7 +38,7 @@ namespace SqlSync
             //c.SyncTables[0].Key.Add("sid");
             //c.SyncTables[0].FieldMappings.Add("sid", "norder");
 
-            Helper.SaveConfig(c);
+            //Helper.SaveConfig(c);
 
             c = Helper.ReadConfig();
 
