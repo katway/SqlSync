@@ -39,7 +39,7 @@ namespace SqlSync
             //c.SyncTables[0].Key.Add("key2");
             //c.SyncTables[0].Key.Add("key3");
             //c.SyncTables[0].FieldMappings.Add("sid", "sid2");
-            Helper.SaveConfig(c);
+            //Helper.SaveConfig(c);
 
 
             c = Helper.ReadConfig();

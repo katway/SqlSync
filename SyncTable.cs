@@ -107,7 +107,7 @@ namespace SqlSync
         /// 如果配置为Insert和Update同时存在，则Update结果大于0时，Insert不再执行
         /// </summary>
         [XmlIgnore]
-        public List<SyncAction> Action { get; set; } = new List<SyncAction>();
+        public List<SyncAction> Action { get; set; } = new List<SyncAction>() { SyncAction.Insert, SyncAction.Update };
 
         [XmlElement("Action")]
         public string action
@@ -117,6 +117,7 @@ namespace SqlSync
             {
                 if (!string.IsNullOrEmpty(value))
                 {
+                    Action.Clear();
                     string[] es = value.Split(',');
                     foreach (string e in es)
                         Action.Add((SyncAction)Enum.Parse(typeof(SyncAction), e));
