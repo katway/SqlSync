@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using SqlSync.Sync;
 
-namespace SqlSync
+namespace SqlSync.Sync
 {
     [Serializable]
-    public class Config
+    public class SyncConfig
     {
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace SqlSync
         /// </summary>
         public SyncInfo SyncInfo { get; set; } = new SyncInfo();
 
-        public Config()
+        public SyncConfig()
         {
             this.SyncTables = new List<SyncTable>();
             AppendSyncFields = true;

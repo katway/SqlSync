@@ -30,15 +30,15 @@ namespace SqlSync
 
         private void btnStart_Click(object sender, EventArgs e)
         {
-            Config c = new Config();
-            //c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
-            //c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.113)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
+            SyncConfig c = new SyncConfig();
+            //c.SqlConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
+            //c.OracleConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.113)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
             ////c.SyncTables.Add(new SyncTable("Employee", "outid"));
             //c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
             //c.SyncTables[0].Key.Add("sid");
             //c.SyncTables[0].FieldMappings.Add("sid", "norder");
 
-            Helper.SaveConfig(c);
+            //Helper.SaveConfig(c);
 
             c = Helper.ReadConfig();
 
@@ -89,7 +89,7 @@ namespace SqlSync
 
 
         #region 功能代码
-        public void TransferData(Config config, List<SyncTable> tables)
+        public void TransferData(SyncConfig config, List<SyncTable> tables)
         {
             //建立到源数据的连接
             SqlConnection sqlConn = new SqlConnection(config.SqlConnectionString);
@@ -165,7 +165,7 @@ namespace SqlSync
             }
         }
 
-        private SyncDirection GetDirectionBySyncLog(Config config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
+        private SyncDirection GetDirectionBySyncLog(SyncConfig config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
             tab.SyncLogsMaster.TableName = tab.SqlTable;
             tab.SyncLogsSlave.TableName = tab.OracleTable;
