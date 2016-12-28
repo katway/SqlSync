@@ -17,16 +17,20 @@ namespace SqlSync.Sync
         /// 主键
         /// </summary>
         [XmlIgnore]
-        public List<string> Key { get; private set; }
+        public List<string> Key { get; private set; } = new List<string>() { "id" };
         [XmlElement("Key")]
         public string Keys
         {
             get { return string.Join(",", Key.ToArray()); }
             set
             {
-                string[] es = value.Split(',');
-                foreach (string e in es)
-                    Key.Add(e.ToLower());
+                if (!string.IsNullOrEmpty(value))
+                {
+                    Key.Clear();
+                    string[] es = value.Split(',');
+                    foreach (string e in es)
+                        Key.Add(e.ToLower());
+                }
             }
         }
 
@@ -128,12 +132,21 @@ namespace SqlSync.Sync
         /// <summary>
         /// 字段映射
         /// </summary>
+        [XmlIgnore]
         public SerializableDictionary<string, string> FieldMappings { get; set; } = new SerializableDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        [XmlElement("FieldMappings")]
+        public SerializableDictionary<string, string> FieldMappingsXML
+        {
+            get { return FieldMappings; }
+            set { FieldMappings = value; }
+        }
+
+
 
         /// <summary>
         /// 是否向源表中写入同步状态
         /// </summary>
-        public bool UpdateSyncState { get; set; }
+        public bool UpdateSyncState { get; set; } = true;
 
 
         [XmlIgnore]
@@ -146,7 +159,7 @@ namespace SqlSync.Sync
 
         public SyncTable()
         {
-            this.Key = new List<string>();
+            //this.Key = new List<string>();
             this.IgnoreFields = new List<string>();
             //this.Key.Add("sId");
             this.SyncStateField = "SyncState";

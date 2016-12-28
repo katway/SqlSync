@@ -36,22 +36,25 @@ namespace SqlSync
             reader.Read();
             XmlSerializer KeySerializer = new XmlSerializer(typeof(TKey));
             XmlSerializer ValueSerializer = new XmlSerializer(typeof(TValue));
-
-            while (reader.NodeType != XmlNodeType.EndElement)
+            if (reader.Name == "SerializableDictionary")
             {
-                reader.ReadStartElement("SerializableDictionary");
-                reader.ReadStartElement("key");
-                TKey tk = (TKey)KeySerializer.Deserialize(reader);
-                reader.ReadEndElement();
-                reader.ReadStartElement("value");
-                TValue vl = (TValue)ValueSerializer.Deserialize(reader);
-                reader.ReadEndElement();
-                reader.ReadEndElement();
-                this.Add(tk, vl);
-                reader.MoveToContent();
-            }
-            reader.ReadEndElement();
+                while (reader.NodeType != XmlNodeType.EndElement)
+                {
+                    reader.ReadStartElement("SerializableDictionary");
+                    reader.ReadStartElement("key");
+                    TKey tk = (TKey)KeySerializer.Deserialize(reader);
+                    reader.ReadEndElement();
+                    reader.ReadStartElement("value");
+                    TValue vl = (TValue)ValueSerializer.Deserialize(reader);
+                    reader.ReadEndElement();
 
+                    reader.ReadEndElement();
+
+                    this.Add(tk, vl);
+                    reader.MoveToContent();
+                }
+                reader.ReadEndElement();
+            }
         }
         public XmlSchema GetSchema()
         {
