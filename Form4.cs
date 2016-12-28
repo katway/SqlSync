@@ -31,14 +31,24 @@ namespace SqlSync
         private void btnStart_Click(object sender, EventArgs e)
         {
             Config c = new Config();
-            //c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
-            //c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.113)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
-            ////c.SyncTables.Add(new SyncTable("Employee", "outid"));
-            //c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
-            //c.SyncTables[0].Key.Add("sid");
-            //c.SyncTables[0].FieldMappings.Add("sid", "norder");
+            c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
+            c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.113)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
+            //c.SyncTables.Add(new SyncTable("Employee", "outid"));
+            c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
+            c.SyncTables[0].Key.Add("sid");
+            c.SyncTables[0].FieldMappings.Add("sid", "norder");
 
-            //Helper.SaveConfig(c);
+            c.SyncTables.Add(new SyncTable("Employee", SyncDirection.Pull));
+            c.SyncTables[1].Key.Clear();
+            c.SyncTables[1].Key.Add("sid");
+            c.SyncTables[1].IgnoreFields.Add("SALLOWIPS");
+            c.SyncTables[1].IgnoreFields.Add("NKH");
+            c.SyncTables[1].IgnoreFields.Add("CO");
+            c.SyncTables[1].IgnoreFields.Add("COO");
+            c.SyncTables.Add(new SyncTable("oplog", SyncDirection.Push));
+            c.SyncTables[2].FieldMappings.Add("id", "id2");
+
+            Helper.SaveConfig(c);
 
             c = Helper.ReadConfig();
 
@@ -370,8 +380,21 @@ namespace SqlSync
                         int upRows = 0;
                         if (tab.Action.Contains(Sync.SyncAction.Update))
                         {
-                            dbCommand.CommandText = updateSql.ToString();
-                            upRows = dbCommand.ExecuteNonQuery();
+                            string upSql = updateSql.ToString();
+                            if (upSql.Contains("AND"))
+                            {
+                                dbCommand.CommandText = upSql;
+                                upRows = dbCommand.ExecuteNonQuery();
+                            }
+                            else
+                            {
+                                string err = string.Format("同步表{0}时，数据集中缺少主键字段，Update操作被取消。\r\n", tab);
+                                log.Error(err);
+                                this.Invoke(new MethodInvoker(
+                                    delegate ()
+                                    { this.txtLog.Text += (err); }));
+                            }
+
                         }
 
                         //如果更新条目为0，才执行插入操作
