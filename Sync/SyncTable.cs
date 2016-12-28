@@ -11,7 +11,7 @@ namespace SqlSync.Sync
         /// <summary>
         /// 数据表名
         /// </summary>
-        public string MasterTable { get; set; }
+        public string SqlTable { get; set; }
 
         /// <summary>
         /// 主键
@@ -90,7 +90,7 @@ namespace SqlSync.Sync
         /// <summary>
         /// 目标表
         /// </summary>
-        public string SlaveTable { get; set; }
+        public string OracleTable { get; set; }
 
         /// <summary>
         /// 同步方向
@@ -158,32 +158,32 @@ namespace SqlSync.Sync
         public SyncTable(string tableName, string key, string queryString, string destinationTable, SyncDirection direction)
             : this()
         {
-            this.MasterTable = tableName;
+            this.SqlTable = tableName;
             this.Key.Add(key);
             this.QueryString = queryString;
-            this.SlaveTable = destinationTable;
+            this.OracleTable = destinationTable;
             this.Direction = direction;
         }
         public SyncTable(string tableName, string queryString, string destinationTable, SyncDirection direction)
             : this()
         {
-            this.MasterTable = tableName;
+            this.SqlTable = tableName;
             this.QueryString = queryString;
-            this.SlaveTable = destinationTable;
+            this.OracleTable = destinationTable;
             this.Direction = direction;
         }
 
         public SyncTable(string tableName, SyncDirection direction)
             : this()
         {
-            this.MasterTable = tableName;
+            this.SqlTable = tableName;
             this.QueryStringFormat = "Select * From {0}"
                                     + string.Format(" Where {0} < {1} and {2} < 20",
                                                         this.SyncStateField, (int)SyncState.Sync,
                                                         this.SyncErrorsField);
             this.QueryString = string.Format(QueryStringFormat, tableName);
 
-            this.SlaveTable = tableName;
+            this.OracleTable = tableName;
             this.Direction = direction;
         }
 
@@ -218,14 +218,14 @@ namespace SqlSync.Sync
         public override string ToString()
         {
             string[] symbol = { "=", ">", "<", "<>" };
-            return string.Format("{0}{1}{2}", this.MasterTable, symbol[(int)this.Direction], this.SlaveTable);
+            return string.Format("{0}{1}{2}", this.SqlTable, symbol[(int)this.Direction], this.OracleTable);
         }
 
         public string ToString(SyncDirection direct)
         {
             string[] symbol = { "=", ">", "<", "<>" };
             string[] symbolFormat = { "{0}{1}{3}{2}", "{0}{1}{3}{2}", "{0}{3}{1}{2}", "{0}{1}{2}" };
-            return string.Format(symbolFormat[(int)direct], this.MasterTable, symbol[(int)this.Direction], this.SlaveTable, symbol[(int)direct]);
+            return string.Format(symbolFormat[(int)direct], this.SqlTable, symbol[(int)this.Direction], this.OracleTable, symbol[(int)direct]);
         }
 
     }

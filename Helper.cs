@@ -129,7 +129,7 @@ namespace SqlSync
                                                         begin alter table {0} add {1} int default 0 not null;end 
                                               if not exists(select * from syscolumns where id=object_id('{0}') and name='{2}') 
                                                         begin alter table {0} add {2} int default 0 not null;end",
-                                                     table.MasterTable,
+                                                     table.SqlTable,
                                                      table.SyncStateField,
                                                      table.SyncErrorsField
                                                      );
@@ -157,7 +157,7 @@ namespace SqlSync
                                                         commit;                                                       
                                                     end if;
                                                 end;",
-                                                     table.SlaveTable.ToUpper(),
+                                                     table.OracleTable.ToUpper(),
                                                      table.SyncStateField.ToUpper(),
                                                      table.SyncErrorsField.ToUpper()
                                                      );
@@ -215,7 +215,7 @@ namespace SqlSync
             //如果执行成功
             string stateSql;
             stateSql = string.Format(@"update {0} set {1} ={2} , {3}= {3}+3-{2}",// where {4}='{5}'",
-                                                (direction == SyncDirection.Push) ? table.MasterTable : table.SlaveTable,
+                                                (direction == SyncDirection.Push) ? table.SqlTable : table.OracleTable,
                                                 table.SyncStateField, row[table.SyncStateField],
                                                 table.SyncErrorsField);
             stateSql += " Where 1=1";

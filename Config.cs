@@ -11,11 +11,11 @@ namespace SqlSync
         /// <summary>
         /// 源数据库的连接字符串
         /// </summary>
-        public string LocalConnectionString { get; set; }
+        public string SqlConnectionString { get; set; }
         /// <summary>
         /// 目标数据库的连接字符串
         /// </summary>
-        public string RemoteConnectionString { get; set; }
+        public string OracleConnectionString { get; set; }
 
         /// <summary>
         /// 要同步数据的检索语句
