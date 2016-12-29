@@ -72,7 +72,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Config.cs" />
+    <Compile Include="Sync\Config.cs" />
     <Compile Include="DatabaseType.cs" />
     <Compile Include="Extensions\Extensions.cs" />
     <Compile Include="Extensions\DataTableExtensions.cs" />

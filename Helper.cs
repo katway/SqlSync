@@ -86,10 +86,10 @@ namespace SqlSync
         /// 将配置写入文件
         /// </summary>
         /// <param name="config"></param>
-        internal static void SaveConfig(Config config)
+        internal static void SaveConfig(SyncConfig config)
         {
-            string file = AppDomain.CurrentDomain.BaseDirectory + "config.xml";
-            XmlSerializer x = new XmlSerializer(typeof(Config));
+            string file = AppDomain.CurrentDomain.BaseDirectory + "sync.config";
+            XmlSerializer x = new XmlSerializer(typeof(SyncConfig));
             FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write);
             x.Serialize(fs, config);
             fs.Close();
@@ -99,9 +99,9 @@ namespace SqlSync
         /// 从缺省的配置文件中读取配置
         /// </summary>
         /// <returns></returns>
-        internal static Config ReadConfig()
+        internal static SyncConfig ReadConfig()
         {
-            return ReadConfig(AppDomain.CurrentDomain.BaseDirectory + "config.xml");
+            return ReadConfig(AppDomain.CurrentDomain.BaseDirectory + "sync.config");
         }
 
         /// <summary>
@@ -109,11 +109,11 @@ namespace SqlSync
         /// </summary>
         /// <param name="configFile">指定的xml文件,应指定包含完整路径的文件名</param>
         /// <returns></returns>
-        internal static Config ReadConfig(string configFile)
+        internal static SyncConfig ReadConfig(string configFile)
         {
-            XmlSerializer x = new XmlSerializer(typeof(Config));
+            XmlSerializer x = new XmlSerializer(typeof(SyncConfig));
             Stream fs = new FileStream(configFile, FileMode.OpenOrCreate, FileAccess.Read);
-            Config c = (Config)x.Deserialize(fs);
+            SyncConfig c = (SyncConfig)x.Deserialize(fs);
             fs.Close();
             return c;
         }
@@ -129,7 +129,7 @@ namespace SqlSync
                                                         begin alter table {0} add {1} int default 0 not null;end 
                                               if not exists(select * from syscolumns where id=object_id('{0}') and name='{2}') 
                                                         begin alter table {0} add {2} int default 0 not null;end",
-                                                     table.MasterTable,
+                                                     table.SqlTable,
                                                      table.SyncStateField,
                                                      table.SyncErrorsField
                                                      );
@@ -157,7 +157,7 @@ namespace SqlSync
                                                         commit;                                                       
                                                     end if;
                                                 end;",
-                                                     table.SlaveTable.ToUpper(),
+                                                     table.OracleTable.ToUpper(),
                                                      table.SyncStateField.ToUpper(),
                                                      table.SyncErrorsField.ToUpper()
                                                      );
@@ -219,7 +219,7 @@ namespace SqlSync
             //如果执行成功
             string stateSql;
             stateSql = string.Format(@"update {0} set {1} ={2} , {3}= {3}+3-{2}",// where {4}='{5}'",
-                                                (direction == SyncDirection.Push) ? table.MasterTable : table.SlaveTable,
+                                                (direction == SyncDirection.Push) ? table.SqlTable : table.OracleTable,
                                                 table.SyncStateField, row[table.SyncStateField],
                                                 table.SyncErrorsField);
             stateSql += " Where 1=1";

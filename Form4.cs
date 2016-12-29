@@ -30,7 +30,7 @@ namespace SqlSync
 
         private void btnStart_Click(object sender, EventArgs e)
         {
-            Config c = new Config();
+            SyncConfig c = new SyncConfig();
             c.LocalConnectionString = @"server=192.168.1.135;uid=sa;pwd=sa;database=zhify";
             c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.135)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
             //c.SyncTables.Add(new SyncTable("Employee", "outid"));
@@ -49,7 +49,7 @@ namespace SqlSync
             c.SyncTables.Add(new SyncTable("oplog", SyncDirection.Push));
             c.SyncTables[2].FieldMappings.Add("id", "id2");
 
-            Helper.SaveConfig(c);
+            //Helper.SaveConfig(c);
 
             c = Helper.ReadConfig();
 
@@ -100,11 +100,11 @@ namespace SqlSync
 
 
         #region 功能代码
-        public void TransferData(Config config, List<SyncTable> tables)
+        public void TransferData(SyncConfig config, List<SyncTable> tables)
         {
             //建立到源数据的连接
-            SqlConnection sqlConn = new SqlConnection(config.LocalConnectionString);
-            OracleConnection oraConn = new OracleConnection(config.RemoteConnectionString);
+            SqlConnection sqlConn = new SqlConnection(config.SqlConnectionString);
+            OracleConnection oraConn = new OracleConnection(config.OracleConnectionString);
 
             sqlConn.StateChange += SqlConn_StateChange;
             oraConn.StateChange += OraConn_StateChange;
@@ -112,7 +112,7 @@ namespace SqlSync
             foreach (var tab in tables)
             {
 
-                log.Info(string.Format("开始同步{0}到{1},方向:{2}.", tab.MasterTable, tab.SlaveTable, tab.Direction));
+                log.Info(string.Format("开始同步{0}到{1},方向:{2}.", tab.SqlTable, tab.OracleTable, tab.Direction));
 
                 sqlConn.Open();
                 oraConn.Open();
@@ -137,8 +137,8 @@ namespace SqlSync
                                                                     + "alter table {0}/{1} add {2} int default 0 not null;\r\n"
                                                                     + "alter table {0}/{1} add {3} int default 0 not null;\r\n"
                                                                     + "{4}\r\n\r\n",
-                                                                    tab.MasterTable.ToUpper(),
-                                                                    tab.SlaveTable.ToUpper(),
+                                                                    tab.SqlTable.ToUpper(),
+                                                                    tab.OracleTable.ToUpper(),
                                                      tab.SyncStateField.ToUpper(),
                                                      tab.SyncErrorsField.ToUpper(),
                                                      ex.Message
@@ -176,10 +176,10 @@ namespace SqlSync
             }
         }
 
-        private SyncDirection GetDirectionBySyncLog(Config config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
+        private SyncDirection GetDirectionBySyncLog(SyncConfig config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
-            tab.SyncLogsMaster.TableName = tab.MasterTable;
-            tab.SyncLogsSlave.TableName = tab.SlaveTable;
+            tab.SyncLogsMaster.TableName = tab.SqlTable;
+            tab.SyncLogsSlave.TableName = tab.OracleTable;
             SyncDirection direct = tab.Direction;
 
             StringBuilder selectSql = new StringBuilder();
@@ -188,7 +188,7 @@ namespace SqlSync
 
             try
             {
-                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.MasterTable)
+                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.SqlTable)
                                         , sqlConn)
                                    .Fill(ds);
                 logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
@@ -196,7 +196,7 @@ namespace SqlSync
                     tab.SyncLogsMaster = logs[0];
 
                 ds.Clear();
-                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.SlaveTable)
+                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.OracleTable)
                                             , oraConn)
                                        .Fill(ds);
                 logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
@@ -224,9 +224,9 @@ namespace SqlSync
             DataSet ds = new DataSet();
 
             //读取源数据
-            DbDataAdapter sourceAdp = new SqlDataAdapter(tab.GetQueryString(tab.MasterTable), sqlConn);
-            sourceAdp.Fill(ds, tab.MasterTable);
-            DataTable dt = ds.Tables[tab.MasterTable];
+            DbDataAdapter sourceAdp = new SqlDataAdapter(tab.GetQueryString(tab.SqlTable), sqlConn);
+            sourceAdp.Fill(ds, tab.SqlTable);
+            DataTable dt = ds.Tables[tab.SqlTable];
 
             //更新状态栏
             this.Invoke(new MethodInvoker(delegate ()
@@ -236,7 +236,7 @@ namespace SqlSync
             }));
 
             //写入目标库
-            dt.TableName = tab.SlaveTable;
+            dt.TableName = tab.OracleTable;
             var resut = InsertData(oraConn, DatabaseType.Oracle, dt, tab);
 
             //更新源数据状态
@@ -253,9 +253,9 @@ namespace SqlSync
 
             DataSet ds = new DataSet();
             //读取源数据
-            DbDataAdapter sourceAdp = new OracleDataAdapter(tab.GetQueryString(tab.SlaveTable), oraConn);
-            sourceAdp.Fill(ds, tab.SlaveTable);
-            DataTable dt = ds.Tables[tab.SlaveTable];
+            DbDataAdapter sourceAdp = new OracleDataAdapter(tab.GetQueryString(tab.OracleTable), oraConn);
+            sourceAdp.Fill(ds, tab.OracleTable);
+            DataTable dt = ds.Tables[tab.OracleTable];
 
             //更新状态栏
             this.Invoke(new MethodInvoker(delegate ()
@@ -265,7 +265,7 @@ namespace SqlSync
             }));
 
             //写入目标库
-            dt.TableName = tab.MasterTable;
+            dt.TableName = tab.SqlTable;
             var resut = InsertData(sqlConn, DatabaseType.MsSql, dt, tab);
 
             //更新源数据状态
