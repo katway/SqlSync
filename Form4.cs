@@ -60,6 +60,7 @@ namespace SqlSync
 
             Helper.SaveConfig(c);
 
+            this.tsslConfigFile.Text = ConfigurationManager.AppSettings["SyncConfigFile"];
             c = Helper.ReadConfig(ConfigurationManager.AppSettings["SyncConfigFile"]);
 
             if (c.SyncInfo.Enable && c.SyncInfo.AutoCreate)
