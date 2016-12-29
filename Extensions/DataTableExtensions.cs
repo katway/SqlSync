@@ -53,7 +53,7 @@ namespace SqlSync.Extensions
             foreach (var property in properties)
             {
                 if (mappings.ContainsKey(property.Name))
-                    property.SetValue(item, row[mappings[property.Name]], null);
+                    property.SetValue(item, (row[mappings[property.Name]] == DBNull.Value) ? null : row[mappings[property.Name]], null);
             }
             return item;
         }

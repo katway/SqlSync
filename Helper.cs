@@ -176,6 +176,9 @@ namespace SqlSync
                                         ,new SqlParameter("@ModifyTime", log.ModifyTime )
                                         ,new SqlParameter("@SyncTime", DateTime.Now)
                                         };
+            foreach (SqlParameter p in parameters)
+                if (p.Value == null)
+                    p.Value = DBNull.Value;
 
             cmd.CommandText = sql;
             cmd.Parameters.AddRange(parameters);
@@ -195,13 +198,14 @@ namespace SqlSync
                                             new OracleParameter(":ModifyTime",log.ModifyTime),
                                             new OracleParameter(":SyncTime", DateTime.Now)
                                             };
+            foreach (OracleParameter p in parameters)
+                if (p.Value == null)
+                    p.Value = DBNull.Value;
 
             cmd.CommandText = sql;
             cmd.Parameters.AddRange(parameters);
             cmd.ExecuteNonQuery();
         }
-
-
 
         /// <summary>
         /// 向数据源表中写入更新成功或失败的状态
