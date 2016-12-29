@@ -185,6 +185,7 @@
             this.Name = "Form4";
             this.Text = "SQL > Oracle数据同步工具";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form4_FormClosing);
+            this.Load += new System.EventHandler(this.Form4_Load);
             this.stsStatus.ResumeLayout(false);
             this.stsStatus.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();

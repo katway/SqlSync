@@ -28,6 +28,13 @@ namespace SqlSync
             log = LogManager.GetLogger(this.GetType());
         }
 
+        private void Form4_Load(object sender, EventArgs e)
+        {
+            if (bool.Parse(ConfigurationManager.AppSettings["AutoStart"]))
+            {
+                btnStart_Click(this.btnStart, null);
+            }
+        }
 
         private void btnStart_Click(object sender, EventArgs e)
         {
@@ -98,7 +105,6 @@ namespace SqlSync
 
             this.btnStop.Enabled = true;
         }
-
 
         #region 功能代码
         /// <summary>
@@ -587,5 +593,6 @@ namespace SqlSync
             this.Invoke(new MethodInvoker(delegate () { this.tsslSqlState.BackColor = c; }));
         }
         #endregion
+
     }
 }
