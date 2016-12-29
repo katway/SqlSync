@@ -31,10 +31,11 @@ namespace SqlSync
         private void btnStart_Click(object sender, EventArgs e)
         {
             Config c = new Config();
-            c.LocalConnectionString = @"server=192.168.10.165;uid=sa;pwd=123456;database=zhify_sync";
-            c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.10.113)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
+            c.LocalConnectionString = @"server=192.168.1.135;uid=sa;pwd=sa;database=zhify";
+            c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.135)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
             //c.SyncTables.Add(new SyncTable("Employee", "outid"));
             c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
+            c.SyncTables[0].Key.Clear();
             c.SyncTables[0].Key.Add("sid");
             c.SyncTables[0].FieldMappings.Add("sid", "norder");
 
@@ -210,7 +211,7 @@ namespace SqlSync
                     else
                         direct = SyncDirection.None;
             }
-            catch (Exception ex)
+            catch (DbException ex)
             {
                 log.Error(string.Format("读取{0}表遇到错误，可能是表不存在，详细信息见下条。", config.SyncInfo.TableName));
                 log.Error(ex);
