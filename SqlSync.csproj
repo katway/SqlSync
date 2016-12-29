@@ -64,6 +64,7 @@
       <HintPath>dlls\log4net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Data.OracleClient" />
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
@@ -72,7 +73,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Sync\Config.cs" />
+    <Compile Include="Sync\SyncConfig.cs" />
     <Compile Include="DatabaseType.cs" />
     <Compile Include="Extensions\Extensions.cs" />
     <Compile Include="Extensions\DataTableExtensions.cs" />

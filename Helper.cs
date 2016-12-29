@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Data;
 using System.Data.SqlClient;
 using System.Data.OracleClient;
 using System.Data.Common;
 using System.IO;
-using System.Xml;
 using System.Xml.Serialization;
 using SqlSync.Sync;
 
@@ -88,7 +86,7 @@ namespace SqlSync
         /// <param name="config"></param>
         internal static void SaveConfig(SyncConfig config)
         {
-            string file = AppDomain.CurrentDomain.BaseDirectory + "sync.config";
+            string file = AppDomain.CurrentDomain.BaseDirectory + "syncconfig.xml";
             XmlSerializer x = new XmlSerializer(typeof(SyncConfig));
             FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write);
             x.Serialize(fs, config);
@@ -101,7 +99,7 @@ namespace SqlSync
         /// <returns></returns>
         internal static SyncConfig ReadConfig()
         {
-            return ReadConfig(AppDomain.CurrentDomain.BaseDirectory + "sync.config");
+            return ReadConfig(AppDomain.CurrentDomain.BaseDirectory + "syncconfig.xml");
         }
 
         /// <summary>

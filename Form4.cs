@@ -13,6 +13,7 @@ using SqlSync.Extensions;
 using System.IO;
 using System.Drawing;
 using SqlSync.Sync;
+using System.Configuration;
 
 namespace SqlSync
 {
@@ -31,8 +32,8 @@ namespace SqlSync
         private void btnStart_Click(object sender, EventArgs e)
         {
             SyncConfig c = new SyncConfig();
-            c.LocalConnectionString = @"server=192.168.1.135;uid=sa;pwd=sa;database=zhify";
-            c.RemoteConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.135)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
+            c.SqlConnectionString = @"server=192.168.1.135;uid=sa;pwd=sa;database=zhify";
+            c.OracleConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.135)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
             //c.SyncTables.Add(new SyncTable("Employee", "outid"));
             c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
             c.SyncTables[0].Key.Clear();
@@ -48,13 +49,13 @@ namespace SqlSync
             c.SyncTables[1].IgnoreFields.Add("COO");
             c.SyncTables.Add(new SyncTable("oplog", SyncDirection.Push));
             c.SyncTables[2].FieldMappings.Add("id", "id2");
+            c.SyncInfo.Enable = false;
 
-            //Helper.SaveConfig(c);
+            Helper.SaveConfig(c);
 
-            c = Helper.ReadConfig();
+            c = Helper.ReadConfig(ConfigurationManager.AppSettings["SyncConfigFile"]);
 
-            //c = c.SyncInfo.Enable ? ConfigLinkSyncLog(c) : c;
-            if (c.SyncInfo.AutoCreate)
+            if (c.SyncInfo.Enable && c.SyncInfo.AutoCreate)
                 Helper.CreateSyncInfoTable();
 
             //更新状态栏
@@ -100,6 +101,11 @@ namespace SqlSync
 
 
         #region 功能代码
+        /// <summary>
+        /// 执行数据传送的主体方法
+        /// </summary>
+        /// <param name="config">传送数据的配置信息</param>
+        /// <param name="tables">在config中出现的，要执行传送的数据表，其余不会执行。</param>
         public void TransferData(SyncConfig config, List<SyncTable> tables)
         {
             //建立到源数据的连接
@@ -148,7 +154,13 @@ namespace SqlSync
                 }
                 #endregion
 
-                SyncDirection direct = GetDirectionBySyncLog(config, tab, sqlConn, oraConn);
+                #region 检查SyncInfo并计算同步方向
+                SyncDirection direct;
+                if (config.SyncInfo.Enable)
+                    direct = GetDirectionBySyncLog(config, tab, sqlConn, oraConn);
+                else
+                    direct = tab.Direction;
+                #endregion
 
                 //更新状态栏
                 this.Invoke(new MethodInvoker(
@@ -162,20 +174,30 @@ namespace SqlSync
                 if ((direct == SyncDirection.Push) || (direct == SyncDirection.Sync))
                 {
                     PushData(tab, sqlConn, oraConn);
-                    Helper.UpdateSyncInfo(tab.SyncLogsMaster, oraConn);
+                    if (config.SyncInfo.Enable)
+                        Helper.UpdateSyncInfo(tab.SyncLogsMaster, oraConn);
                 }
 
                 ///下面进行异向同步
                 if ((direct == SyncDirection.Pull) || direct == SyncDirection.Sync)
                 {
                     PullData(tab, sqlConn, oraConn);
-                    Helper.UpdateSyncInfo(tab.SyncLogsSlave, sqlConn);
+                    if (config.SyncInfo.Enable)
+                        Helper.UpdateSyncInfo(tab.SyncLogsSlave, sqlConn);
                 }
                 sqlConn.Close();
                 oraConn.Close();
             }
         }
 
+        /// <summary>
+        /// 根据SyncInfo表中的同步纪录提前加载表的数据传送方向
+        /// </summary>
+        /// <param name="config"></param>
+        /// <param name="tab"></param>
+        /// <param name="sqlConn"></param>
+        /// <param name="oraConn"></param>
+        /// <returns></returns>
         private SyncDirection GetDirectionBySyncLog(SyncConfig config, SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
             tab.SyncLogsMaster.TableName = tab.SqlTable;
@@ -219,6 +241,12 @@ namespace SqlSync
             return direct;
         }
 
+        /// <summary>
+        /// 由Sql读取数据表数据，写入到Oracle
+        /// </summary>
+        /// <param name="tab">读取和写入的表</param>
+        /// <param name="sqlConn">Sql连接</param>
+        /// <param name="oraConn">Oracle连接</param>
         public void PushData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
             DataSet ds = new DataSet();
@@ -247,7 +275,12 @@ namespace SqlSync
 
         }
 
-
+        /// <summary>
+        /// 由Oracle读取数据表数据，写入到Sql
+        /// </summary>
+        /// <param name="tab">读取和写入的表</param>
+        /// <param name="sqlConn">Sql连接</param>
+        /// <param name="oraConn">Oracle连接</param>
         public void PullData(SyncTable tab, SqlConnection sqlConn, OracleConnection oraConn)
         {
 
