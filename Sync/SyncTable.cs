@@ -150,9 +150,9 @@ namespace SqlSync.Sync
 
 
         [XmlIgnore]
-        public SyncLog SyncLogsMaster { get; set; } = new SyncLog();
+        public SyncInfoDetail SyncLogsMaster { get; set; } = new SyncInfoDetail();
         [XmlIgnore]
-        public SyncLog SyncLogsSlave { get; set; } = new SyncLog();
+        public SyncInfoDetail SyncLogsSlave { get; set; } = new SyncInfoDetail();
 
 
 
@@ -231,13 +231,13 @@ namespace SqlSync.Sync
 
         public override string ToString()
         {
-            string[] symbol = { "=", ">", "<", "<>" };
+            string[] symbol = { "=", ">", "<", "<>", "?" };
             return string.Format("{0}{1}{2}", this.SqlTable, symbol[(int)this.Direction], this.OracleTable);
         }
 
         public string ToString(SyncDirection direct)
         {
-            string[] symbol = { "=", ">", "<", "<>" };
+            string[] symbol = { "=", ">", "<", "<>", "?" };
             string[] symbolFormat = { "{0}{1}{3}{2}", "{0}{1}{3}{2}", "{0}{3}{1}{2}", "{0}{1}{2}" };
             return string.Format(symbolFormat[(int)direct], this.SqlTable, symbol[(int)this.Direction], this.OracleTable, symbol[(int)direct]);
         }

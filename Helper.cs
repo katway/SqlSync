@@ -163,7 +163,7 @@ namespace SqlSync
             oracmd.ExecuteNonQuery();
         }
 
-        internal static void UpdateSyncInfo(SyncLog log, SqlConnection conn)
+        internal static void UpdateSyncInfo(SyncInfoDetail log, SqlConnection conn)
         {
             string sql = "delete from SyncInfo where TableName = @TableName ;"
                         + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(@TableName,@ModifyTime,@SyncTime);";
@@ -184,7 +184,7 @@ namespace SqlSync
         }
 
 
-        internal static void UpdateSyncInfo(SyncLog log, OracleConnection conn)
+        internal static void UpdateSyncInfo(SyncInfoDetail log, OracleConnection conn)
         {
             string sql = "begin "
                         + " delete from SyncInfo where TableName = :TableName ;"

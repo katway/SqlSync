@@ -162,11 +162,16 @@ namespace SqlSync
                 #endregion
 
                 #region 检查SyncInfo并计算同步方向
-                SyncDirection direct;
+                SyncDirection direct = tab.Direction;
                 if (config.SyncInfo.Enable)
+                {
                     direct = GetDirectionBySyncLog(config, tab, sqlConn, oraConn);
-                else
-                    direct = tab.Direction;
+                    if (direct == SyncDirection.Unkown)
+                        direct = tab.Direction;
+                }
+
+
+
                 #endregion
 
                 //更新状态栏
@@ -217,36 +222,40 @@ namespace SqlSync
         {
             tab.SyncLogsMaster.TableName = tab.SqlTable;
             tab.SyncLogsSlave.TableName = tab.OracleTable;
-            SyncDirection direct = tab.Direction;
+            SyncDirection direct = SyncDirection.Unkown;
 
             StringBuilder selectSql = new StringBuilder();
             DataSet ds = new DataSet();
-            IList<SyncLog> logs;
+            IList<SyncInfoDetail> logs;
 
             try
             {
-                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.SqlTable)
+                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncInfoDetail.Mappings["TableName"], tab.SqlTable)
                                         , sqlConn)
                                    .Fill(ds);
-                logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+                logs = ds.Tables[0].ToList<SyncInfoDetail>(SyncInfoDetail.Mappings);
                 if (logs.Count > 0)
                     tab.SyncLogsMaster = logs[0];
+                else
+                    return direct;
 
                 ds.Clear();
-                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncLog.Mappings["TableName"], tab.OracleTable)
+                Helper.GetDbDataAdapter(string.Format("select * from {0} Where {1}='{2}'", config.SyncInfo.TableName, SyncInfoDetail.Mappings["TableName"], tab.OracleTable)
                                             , oraConn)
                                        .Fill(ds);
-                logs = ds.Tables[0].ToList<SyncLog>(SyncLog.Mappings);
+                logs = ds.Tables[0].ToList<SyncInfoDetail>(SyncInfoDetail.Mappings);
                 if (logs.Count > 0)
                     tab.SyncLogsSlave = logs[0];
+                else
+                    return direct;
 
-                if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
-                    if (tab.SyncLogsMaster.ModifyTime > tab.SyncLogsSlave.ModifyTime)
-                        direct = SyncDirection.Push;
-                    else if (tab.SyncLogsMaster.ModifyTime < tab.SyncLogsSlave.ModifyTime)
-                        direct = SyncDirection.Pull;
-                    else
-                        direct = SyncDirection.None;
+                //if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
+                direct = SyncDirection.None;
+
+                if (tab.SyncLogsMaster.ModifyTime > tab.SyncLogsSlave.syncTime)
+                    direct = direct | SyncDirection.Push;
+                if (tab.SyncLogsMaster.SyncTime < tab.SyncLogsSlave.ModifyTime)
+                    direct = direct | SyncDirection.Pull;
             }
             catch (DbException ex)
             {

@@ -121,6 +121,7 @@
     <Compile Include="Sync\SyncDatabase.cs" />
     <Compile Include="Sync\SyncDirection.cs" />
     <Compile Include="Sync\SyncInfo.cs" />
+    <Compile Include="Sync\SyncInfoDetail.cs" />
     <Compile Include="Sync\SyncPriority.cs" />
     <Compile Include="Sync\SyncState.cs" />
     <Compile Include="Sync\SyncTable.cs" />
