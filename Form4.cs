@@ -39,26 +39,26 @@ namespace SqlSync
         private void btnStart_Click(object sender, EventArgs e)
         {
             SyncConfig c = new SyncConfig();
-            c.SqlConnectionString = @"server=192.168.1.135;uid=sa;pwd=sa;database=zhify";
-            c.OracleConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.135)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
-            //c.SyncTables.Add(new SyncTable("Employee", "outid"));
-            c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
-            c.SyncTables[0].Key.Clear();
-            c.SyncTables[0].Key.Add("sid");
-            c.SyncTables[0].FieldMappings.Add("sid", "norder");
+            //c.SqlConnectionString = @"server=192.168.1.135;uid=sa;pwd=sa;database=zhify";
+            //c.OracleConnectionString = @"Data Source=(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.135)(PORT=1521)))(CONNECT_DATA=(SID = orcl)));User Id=zhify;Password=zhify;";
+            ////c.SyncTables.Add(new SyncTable("Employee", "outid"));
+            //c.SyncTables.Add(new SyncTable("Company", "norder", SyncDirection.Sync));
+            //c.SyncTables[0].Key.Clear();
+            //c.SyncTables[0].Key.Add("sid");
+            //c.SyncTables[0].FieldMappings.Add("sid", "norder");
 
-            c.SyncTables.Add(new SyncTable("Employee", SyncDirection.Pull));
-            c.SyncTables[1].Key.Clear();
-            c.SyncTables[1].Key.Add("sid");
-            c.SyncTables[1].IgnoreFields.Add("SALLOWIPS");
-            c.SyncTables[1].IgnoreFields.Add("NKH");
-            c.SyncTables[1].IgnoreFields.Add("CO");
-            c.SyncTables[1].IgnoreFields.Add("COO");
-            c.SyncTables.Add(new SyncTable("oplog", SyncDirection.Push));
-            c.SyncTables[2].FieldMappings.Add("id", "id2");
-            c.SyncInfo.Enable = false;
+            //c.SyncTables.Add(new SyncTable("Employee", SyncDirection.Pull));
+            //c.SyncTables[1].Key.Clear();
+            //c.SyncTables[1].Key.Add("sid");
+            //c.SyncTables[1].IgnoreFields.Add("SALLOWIPS");
+            //c.SyncTables[1].IgnoreFields.Add("NKH");
+            //c.SyncTables[1].IgnoreFields.Add("CO");
+            //c.SyncTables[1].IgnoreFields.Add("COO");
+            //c.SyncTables.Add(new SyncTable("oplog", SyncDirection.Push));
+            //c.SyncTables[2].FieldMappings.Add("id", "id2");
+            //c.SyncInfo.Enable = false;
 
-            Helper.SaveConfig(c);
+            //Helper.SaveConfig(c);
 
             this.tsslConfigFile.Text = ConfigurationManager.AppSettings["SyncConfigFile"];
             c = Helper.ReadConfig(ConfigurationManager.AppSettings["SyncConfigFile"]);
@@ -182,7 +182,11 @@ namespace SqlSync
                 {
                     PushData(tab, sqlConn, oraConn);
                     if (config.SyncInfo.Enable)
-                        Helper.UpdateSyncInfo(tab.SyncLogsMaster, oraConn);
+                    {
+                        tab.SyncLogsSlave.ModifyTime = tab.SyncLogsMaster.ModifyTime;
+                        Helper.UpdateSyncInfo(tab.SyncLogsSlave, oraConn);
+                    }
+
                 }
 
                 ///下面进行异向同步
@@ -190,7 +194,11 @@ namespace SqlSync
                 {
                     PullData(tab, sqlConn, oraConn);
                     if (config.SyncInfo.Enable)
-                        Helper.UpdateSyncInfo(tab.SyncLogsSlave, sqlConn);
+                    {
+                        tab.SyncLogsMaster.ModifyTime = tab.SyncLogsSlave.ModifyTime;
+                        Helper.UpdateSyncInfo(tab.SyncLogsMaster, sqlConn);
+                    }
+
                 }
                 sqlConn.Close();
                 oraConn.Close();
