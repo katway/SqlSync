@@ -247,14 +247,12 @@ namespace SqlSync
                 else
                     return direct;
 
-                if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
-                {
-                    direct = SyncDirection.None;
-                    if (tab.SyncLogsMaster.ModifyTime.GetValueOrDefault() > tab.SyncLogsSlave.SyncTime.GetValueOrDefault())
-                        direct = direct | SyncDirection.Push;
-                    if (tab.SyncLogsMaster.SyncTime.GetValueOrDefault() < tab.SyncLogsSlave.ModifyTime.GetValueOrDefault())
-                        direct = direct | SyncDirection.Pull;
-                }
+                direct = SyncDirection.None;
+                if (tab.SyncLogsMaster.ModifyTime.GetValueOrDefault() > tab.SyncLogsSlave.SyncTime.GetValueOrDefault())
+                    direct = direct | SyncDirection.Push;
+                if (tab.SyncLogsMaster.SyncTime.GetValueOrDefault() < tab.SyncLogsSlave.ModifyTime.GetValueOrDefault())
+                    direct = direct | SyncDirection.Pull;
+                //}
             }
             catch (DbException ex)
             {
