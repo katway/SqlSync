@@ -168,10 +168,9 @@ namespace SqlSync
                     direct = GetDirectionBySyncLog(config, tab, sqlConn, oraConn);
                     if (direct == SyncDirection.Unkown)
                         direct = tab.Direction;
+                    else
+                        direct = direct & tab.Direction;
                 }
-
-
-
                 #endregion
 
                 //更新状态栏
@@ -203,7 +202,6 @@ namespace SqlSync
                         tab.SyncLogsMaster.ModifyTime = tab.SyncLogsSlave.ModifyTime;
                         Helper.UpdateSyncInfo(tab.SyncLogsMaster, sqlConn);
                     }
-
                 }
                 sqlConn.Close();
                 oraConn.Close();
@@ -249,13 +247,14 @@ namespace SqlSync
                 else
                     return direct;
 
-                //if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
-                direct = SyncDirection.None;
-
-                if (tab.SyncLogsMaster.ModifyTime > tab.SyncLogsSlave.syncTime)
-                    direct = direct | SyncDirection.Push;
-                if (tab.SyncLogsMaster.SyncTime < tab.SyncLogsSlave.ModifyTime)
-                    direct = direct | SyncDirection.Pull;
+                if (tab.SyncLogsMaster.ModifyTime.HasValue && tab.SyncLogsSlave.ModifyTime.HasValue)
+                {
+                    direct = SyncDirection.None;
+                    if (tab.SyncLogsMaster.ModifyTime.GetValueOrDefault() > tab.SyncLogsSlave.SyncTime.GetValueOrDefault())
+                        direct = direct | SyncDirection.Push;
+                    if (tab.SyncLogsMaster.SyncTime.GetValueOrDefault() < tab.SyncLogsSlave.ModifyTime.GetValueOrDefault())
+                        direct = direct | SyncDirection.Pull;
+                }
             }
             catch (DbException ex)
             {

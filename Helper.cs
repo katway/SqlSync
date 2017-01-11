@@ -166,12 +166,12 @@ namespace SqlSync
         internal static void UpdateSyncInfo(SyncInfoDetail log, SqlConnection conn)
         {
             string sql = "delete from SyncInfo where TableName = @TableName ;"
-                        + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(@TableName,@ModifyTime,@SyncTime);";
+                        + " insert into SyncInfo (TableName,SyncTime) values(@TableName,@SyncTime);";
             DbCommand cmd = Helper.GetDbCommand(conn);
 
 
             SqlParameter[] parameters = { new SqlParameter("@TableName", log.TableName)
-                                        ,new SqlParameter("@ModifyTime", log.ModifyTime )
+                                        //,new SqlParameter("@ModifyTime", log.ModifyTime )
                                         ,new SqlParameter("@SyncTime", DateTime.Now)
                                         };
             foreach (SqlParameter p in parameters)
@@ -188,12 +188,11 @@ namespace SqlSync
         {
             string sql = "begin "
                         + " delete from SyncInfo where TableName = :TableName ;"
-                        + " insert into SyncInfo (TableName,ModifyTime,SyncTime) values(:TableName,:ModifyTime,:SyncTime);"
+                        + " insert into SyncInfo (TableName,SyncTime) values(:TableName,:SyncTime);"
                         + " end;";
             DbCommand cmd = Helper.GetDbCommand(conn);
 
-            OracleParameter[] parameters = {new OracleParameter(":TableName", log.TableName),
-                                            new OracleParameter(":ModifyTime",log.ModifyTime),
+            OracleParameter[] parameters = {new OracleParameter(":TableName", log.TableName),                                            
                                             new OracleParameter(":SyncTime", DateTime.Now)
                                             };
             foreach (OracleParameter p in parameters)

@@ -11,30 +11,10 @@ namespace SqlSync.Sync
         public static SerializableDictionary<string, string> Mappings { get; set; } = new SerializableDictionary<string, string>();
 
         public string TableName { get; set; }
-        public DateTime? ModifyTime
-        {
-            get { return modifyTime; }
-            set
-            {
-                if (value.HasValue)
-                    modifyTime = value.Value;
-                else
-                    modifyTime = DateTime.MinValue;
-            }
-        }
-        public DateTime modifyTime;
-        public DateTime? SyncTime
-        {
-            get { return syncTime; }
-            set
-            {
-                if (value.HasValue)
-                    syncTime = value.Value;
-                else
-                    syncTime = DateTime.MinValue;
-            }
-        }
-        public DateTime syncTime;
+        public DateTime? ModifyTime { get; set; }
+
+        public DateTime? SyncTime { get; set; }
+
         static SyncInfoDetail()
         {
             Mappings.Add("TableName", "TableName");
