@@ -165,8 +165,14 @@ namespace SqlSync
 
         internal static void UpdateSyncInfo(SyncInfoDetail log, SqlConnection conn)
         {
-            string sql = "delete from SyncInfo where TableName = @TableName ;"
-                        + " insert into SyncInfo (TableName,SyncTime) values(@TableName,@SyncTime);";
+            string sql = @"if  exists(select * from SyncInfo where TableName=@TableName)
+                            begin
+                                update SyncInfo SET SyncTime = @SyncTime WHERE TableName= @TableName;
+                            end;
+                        else
+                            begin
+                                insert into SyncInfo (TableName, SyncTime) values(@TableName, @SyncTime);
+                            end;";
             DbCommand cmd = Helper.GetDbCommand(conn);
 
 
@@ -186,13 +192,20 @@ namespace SqlSync
 
         internal static void UpdateSyncInfo(SyncInfoDetail log, OracleConnection conn)
         {
-            string sql = "begin "
-                        + " delete from SyncInfo where TableName = :TableName ;"
-                        + " insert into SyncInfo (TableName,SyncTime) values(:TableName,:SyncTime);"
-                        + " end;";
+            string sql = @"declare v_count integer;
+                            begin
+                                select count(1) into v_count from SyncInfo where Tablename = :TableName;
+                                if v_count =0 then
+                                   insert into SyncInfo (TableName,SyncTime) values(:TableName,:SyncTime);                                                       
+                                   commit;
+                                else
+                                   update SyncInfo set SyncTime = :SyncTime where Tablename = :TableName;                                                       
+                                   commit;                                                       
+                                end if;
+                            end;";
             DbCommand cmd = Helper.GetDbCommand(conn);
 
-            OracleParameter[] parameters = {new OracleParameter(":TableName", log.TableName),                                            
+            OracleParameter[] parameters = {new OracleParameter(":TableName", log.TableName),
                                             new OracleParameter(":SyncTime", DateTime.Now)
                                             };
             foreach (OracleParameter p in parameters)
