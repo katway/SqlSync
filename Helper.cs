@@ -178,7 +178,7 @@ namespace SqlSync
 
             SqlParameter[] parameters = { new SqlParameter("@TableName", log.TableName)
                                         //,new SqlParameter("@ModifyTime", log.ModifyTime )
-                                        ,new SqlParameter("@SyncTime", DateTime.Now)
+                                        ,new SqlParameter("@SyncTime", log.SyncTime)
                                         };
             foreach (SqlParameter p in parameters)
                 if (p.Value == null)
@@ -206,7 +206,7 @@ namespace SqlSync
             DbCommand cmd = Helper.GetDbCommand(conn);
 
             OracleParameter[] parameters = {new OracleParameter(":TableName", log.TableName),
-                                            new OracleParameter(":SyncTime", DateTime.Now)
+                                            new OracleParameter(":SyncTime", log.SyncTime)
                                             };
             foreach (OracleParameter p in parameters)
                 if (p.Value == null)
@@ -280,8 +280,6 @@ namespace SqlSync
             dataFormat.Add(typeof(decimal), @"{0}");
 
             return dataFormat;
-        }
-
-
+        }        
     }
 }

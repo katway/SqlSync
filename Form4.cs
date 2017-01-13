@@ -184,6 +184,8 @@ namespace SqlSync
                 ///下面进行单向同步
                 if ((direct == SyncDirection.Push) || (direct == SyncDirection.Sync))
                 {
+                    //对方的同步时间应该是从本地取数据的时刻
+                    tab.SyncLogsSlave.SyncTime = DateTime.Now;
                     PushData(tab, sqlConn, oraConn);
                     if (config.SyncInfo.Enable)
                     {
@@ -196,6 +198,8 @@ namespace SqlSync
                 ///下面进行异向同步
                 if ((direct == SyncDirection.Pull) || direct == SyncDirection.Sync)
                 {
+                    //本地的同步时间应该是从对方取数据的时刻
+                    tab.SyncLogsMaster.SyncTime = DateTime.Now;
                     PullData(tab, sqlConn, oraConn);
                     if (config.SyncInfo.Enable)
                     {
